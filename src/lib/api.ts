@@ -1,6 +1,11 @@
 import type { Merchant, VisibilityScore, DailyScore, Competitor, Fix } from '../types';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://geo-api.onrender.com/api/v1';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://geo-v-backend.onrender.com/api/v1';
+const API_HOST = import.meta.env.VITE_API_HOST ?? 'https://geo-v-backend.onrender.com';
+
+export function getOAuthURL(shop: string): string {
+  return `${API_HOST}/oauth/begin?shop=${encodeURIComponent(shop)}`;
+}
 
 function getToken(): string {
   return localStorage.getItem('geo_session_token') ?? '';

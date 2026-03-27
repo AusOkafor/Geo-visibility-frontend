@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LandingPage } from './pages/LandingPage';
+import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { AppShell } from './components/AppShell';
 import { DashboardHome } from './pages/dashboard/DashboardHome';
 import { VisibilityPage } from './pages/dashboard/VisibilityPage';
@@ -40,6 +41,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/dashboard/*" element={<DashboardLayout />} />
         </Routes>
       </BrowserRouter>

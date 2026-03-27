@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { Check } from 'lucide-react';
+import { Check, X, ArrowRight, ShoppingBag, Shield, Zap } from 'lucide-react';
+import { getOAuthURL } from '../lib/api';
 
 function useScrolled() {
   const [scrolled, setScrolled] = useState(false);
@@ -51,6 +53,217 @@ const PRICING = [
   },
 ];
 
+// ── Shared modal state lifted to module level so any button can open it ────────
+let _setModalOpen: ((v: boolean) => void) | null = null;
+
+function openConnectModal() {
+  _setModalOpen?.(true);
+}
+
+function ConnectModal() {
+  const [open, setOpen] = useState(false);
+  const [shop, setShop] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Register setter so any button can trigger this modal
+  useEffect(() => {
+    _setModalOpen = setOpen;
+    return () => { _setModalOpen = null; };
+  }, []);
+
+  const close = useCallback(() => {
+    setOpen(false);
+    setShop('');
+    setError('');
+    setLoading(false);
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open, close]);
+
+  function handleConnect() {
+    const raw = shop.trim().toLowerCase().replace(/^https?:\/\//, '');
+    if (!raw) {
+      setError('Please enter your Shopify store domain');
+      return;
+    }
+    const domain = raw.endsWith('.myshopify.com') ? raw : `${raw}.myshopify.com`;
+    setLoading(true);
+    window.location.href = getOAuthURL(domain);
+  }
+
+  if (!open) return null;
+
+  return createPortal(
+    <div
+      onClick={close}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        background: 'rgba(0,0,0,0.75)',
+        backdropFilter: 'blur(6px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: '#111113',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 12,
+          width: '100%',
+          maxWidth: 480,
+          padding: '32px',
+          position: 'relative',
+          fontFamily: 'DM Sans, sans-serif',
+        }}
+      >
+        {/* Close button */}
+        <button
+          onClick={close}
+          style={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            background: 'none',
+            border: 'none',
+            color: '#64748B',
+            cursor: 'pointer',
+            padding: 4,
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <X size={18} />
+        </button>
+
+        {/* Header */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 8,
+              background: 'rgba(0,212,255,0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <ShoppingBag size={18} style={{ color: '#00D4FF' }} />
+            </div>
+            <div>
+              <p style={{ color: '#ffffff', fontWeight: 600, fontSize: 16, margin: 0 }}>
+                Connect your Shopify store
+              </p>
+              <p style={{ color: '#64748B', fontSize: 13, margin: 0 }}>
+                Takes less than 60 seconds
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* What you're granting */}
+        <div style={{
+          background: '#0D0D0F',
+          border: '1px solid rgba(255,255,255,0.05)',
+          borderRadius: 8,
+          padding: '14px 16px',
+          marginBottom: 24,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+        }}>
+          {[
+            { icon: <Zap size={14} />, text: 'Read your product catalog to run AI visibility scans' },
+            { icon: <ArrowRight size={14} />, text: 'Write product descriptions when you approve a fix' },
+            { icon: <Shield size={14} />, text: 'Your access token is AES-256 encrypted at rest' },
+          ].map((item, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <span style={{ color: '#00D4FF', marginTop: 1, flexShrink: 0 }}>{item.icon}</span>
+              <span style={{ color: '#94a3b8', fontSize: 13 }}>{item.text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Domain input */}
+        <label style={{ display: 'block', marginBottom: 6, fontSize: 12, color: '#64748B', letterSpacing: '0.05em' }}>
+          YOUR STORE DOMAIN
+        </label>
+        <div style={{ position: 'relative', marginBottom: error ? 8 : 20 }}>
+          <input
+            autoFocus
+            type="text"
+            placeholder="your-store.myshopify.com"
+            value={shop}
+            onChange={(e) => { setShop(e.target.value); setError(''); }}
+            onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              background: '#0D0D0F',
+              border: `1px solid ${error ? '#EF4444' : 'rgba(255,255,255,0.12)'}`,
+              borderRadius: 8,
+              padding: '12px 14px',
+              color: '#ffffff',
+              fontSize: 14,
+              outline: 'none',
+              fontFamily: 'DM Sans, sans-serif',
+            }}
+          />
+        </div>
+        {error && (
+          <p style={{ color: '#EF4444', fontSize: 12, marginBottom: 16, marginTop: 0 }}>{error}</p>
+        )}
+
+        {/* CTA */}
+        <button
+          onClick={handleConnect}
+          disabled={loading}
+          style={{
+            width: '100%',
+            background: loading ? '#00D4FF99' : '#00D4FF',
+            color: '#0A0A0B',
+            border: 'none',
+            borderRadius: 8,
+            padding: '13px 0',
+            fontWeight: 700,
+            fontSize: 15,
+            cursor: loading ? 'default' : 'pointer',
+            fontFamily: 'DM Sans, sans-serif',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}
+        >
+          {loading ? 'Redirecting to Shopify…' : (
+            <>Connect Store <ArrowRight size={16} /></>
+          )}
+        </button>
+
+        <p style={{ color: '#64748B', fontSize: 11, textAlign: 'center', marginTop: 14, marginBottom: 0 }}>
+          You'll be redirected to Shopify to authorize access. No credit card required.
+        </p>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function ConnectButton({ label, className, style }: { label: string; className?: string; style?: React.CSSProperties }) {
+  return (
+    <button onClick={openConnectModal} className={className} style={style}>
+      {label}
+    </button>
+  );
+}
+
 export function LandingPage() {
   const scrolled = useScrolled();
   const [pulse, setPulse] = useState(true);
@@ -62,6 +275,7 @@ export function LandingPage() {
 
   return (
     <div style={{ background: '#0A0A0B', color: '#ffffff', fontFamily: 'DM Sans, sans-serif' }}>
+      <ConnectModal />
       {/* Sticky header */}
       <header
         className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 transition-all duration-300"
@@ -84,17 +298,17 @@ export function LandingPage() {
           <a href="#features" className="hover:text-white transition-colors">Features</a>
           <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
         </nav>
-        <Link
-          to="/dashboard"
+        <ConnectButton
+          label="Connect Store"
           className="text-[13px] font-medium px-4 py-1.5 rounded transition-all hover:bg-[#00D4FF22]"
           style={{
             border: '1px solid #00D4FF',
             color: '#00D4FF',
             borderRadius: 6,
+            background: 'transparent',
+            cursor: 'pointer',
           }}
-        >
-          Connect Store
-        </Link>
+        />
       </header>
 
       {/* Hero */}
@@ -129,18 +343,18 @@ export function LandingPage() {
               ChatGPT, Perplexity, and Gemini are recommending your competitors
               right now. Find out why — and fix it in minutes.
             </p>
-            <Link
-              to="/dashboard"
+            <ConnectButton
+              label="Connect My Shopify Store →"
               className="inline-flex items-center gap-2 font-medium text-[16px] px-6 py-3 transition-all hover:scale-[1.02] hover:brightness-110"
               style={{
                 background: '#00D4FF',
                 color: '#0A0A0B',
                 borderRadius: 6,
                 height: 48,
+                border: 'none',
+                cursor: 'pointer',
               }}
-            >
-              Connect My Shopify Store →
-            </Link>
+            />
             <p className="text-[12px] mt-3" style={{ color: '#64748B' }}>
               Free 14-day trial. No credit card. Connects in 60 seconds.
             </p>
@@ -386,18 +600,17 @@ export function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link
-                  to="/dashboard"
-                  className="block text-center py-2 text-[14px] font-medium rounded transition-all hover:opacity-90"
+                <ConnectButton
+                  label="Get started"
+                  className="block w-full text-center py-2 text-[14px] font-medium rounded transition-all hover:opacity-90"
                   style={{
                     background: plan.popular ? '#00D4FF' : 'transparent',
                     color: plan.popular ? '#0A0A0B' : '#00D4FF',
                     border: plan.popular ? 'none' : '1px solid #00D4FF',
                     borderRadius: 6,
+                    cursor: 'pointer',
                   }}
-                >
-                  Get started
-                </Link>
+                />
               </div>
             ))}
           </div>
