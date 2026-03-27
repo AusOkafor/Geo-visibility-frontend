@@ -38,7 +38,7 @@ export interface Fix {
   original: Record<string, unknown>;
   generated: Record<string, unknown>;
   est_impact: number;
-  status: 'pending' | 'approved' | 'rejected' | 'applied';
+  status: 'pending' | 'approved' | 'rejected' | 'applied' | 'manual' | 'applying';
   target_gid: string;
   created_at: string;
 }

@@ -10,7 +10,9 @@ import {
   ChevronRight,
   Menu,
   X,
+  LogOut,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useMerchant } from '../hooks/useApi';
 
@@ -38,7 +40,13 @@ export function AppShell({ children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { data: merchant } = useMerchant();
+
+  function handleLogout() {
+    localStorage.removeItem('geo_session_token');
+    navigate('/');
+  }
 
   const pageTitle =
     PAGE_TITLES[location.pathname] ??
@@ -152,12 +160,28 @@ export function AppShell({ children }: AppShellProps) {
                 {initials}
               </div>
               <p
-                className="text-[12px] truncate"
+                className="text-[12px] truncate flex-1"
                 style={{ color: '#64748B' }}
               >
-                {merchant?.shop_domain ?? 'oakwoodleather.myshopify.com'}
+                {merchant?.shop_domain ?? ''}
               </p>
+              <button
+                onClick={handleLogout}
+                title="Disconnect store"
+                className="flex-shrink-0 text-[#64748B] hover:text-white transition-colors"
+              >
+                <LogOut size={14} />
+              </button>
             </div>
+          )}
+          {collapsed && (
+            <button
+              onClick={handleLogout}
+              title="Disconnect store"
+              className="w-full flex items-center justify-center py-2 text-[#64748B] hover:text-white transition-colors"
+            >
+              <LogOut size={14} />
+            </button>
           )}
           <button
             onClick={() => setCollapsed((c) => !c)}

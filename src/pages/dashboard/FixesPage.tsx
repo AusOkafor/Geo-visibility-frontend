@@ -82,6 +82,13 @@ function FixCard({ fix, onDismiss }: { fix: Fix; onDismiss: (id: string) => void
           >
             ✓ Applied
           </span>
+        ) : fix.status === 'manual' ? (
+          <span
+            className="text-[12px] px-2 py-1 rounded text-center"
+            style={{ color: '#F59E0B', background: 'rgba(245,158,11,0.08)' }}
+          >
+            Manual action needed
+          </span>
         ) : fix.status === 'rejected' ? (
           <div className="text-right">
             <span className="text-[12px]" style={{ color: '#64748B' }}>Dismissed</span>
