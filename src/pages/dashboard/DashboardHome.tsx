@@ -20,16 +20,6 @@ import { PriorityDot } from '../../components/ui/PriorityDot';
 import { useMerchant, useVisibilityScores, useDailyScores, useFixes, useCompetitors } from '../../hooks/useApi';
 import { formatDate } from '../../lib/utils';
 
-const MOCK_DAILY: { date: string; chatgpt: number; perplexity: number; gemini: number }[] = Array.from({ length: 30 }, (_, i) => {
-  const d = new Date('2026-02-25');
-  d.setDate(d.getDate() + i);
-  return {
-    date: d.toISOString().slice(0, 10),
-    chatgpt: Math.max(1, 8 + Math.round((Math.random() - 0.5) * 6) + (i > 20 ? -2 : 0)),
-    perplexity: Math.max(1, 21 + Math.round((Math.random() - 0.5) * 8) + Math.floor(i / 5)),
-    gemini: Math.max(1, 5 + Math.round((Math.random() - 0.5) * 4)),
-  };
-});
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -65,9 +55,9 @@ export function DashboardHome() {
   const perplexity = scores?.find((s) => s.platform === 'perplexity');
   const gemini = scores?.find((s) => s.platform === 'gemini');
 
-  const chartData = daily?.length ? daily : MOCK_DAILY;
-  const pendingFixes = fixes?.length ? fixes : MOCK_FIXES;
-  const compList = competitors?.length ? competitors : MOCK_COMPETITORS;
+  const chartData = daily ?? [];
+  const pendingFixes = fixes ?? [];
+  const compList = competitors ?? [];
 
   function dismissWelcome() {
     localStorage.setItem('welcome_dismissed', 'true');
@@ -119,25 +109,22 @@ export function DashboardHome() {
           <>
             <MetricCard
               label="ChatGPT Visibility"
-              value={chatgpt?.score ?? 8}
+              value={chatgpt?.score ?? 0}
               suffix="%"
-              trend={-2}
             />
             <MetricCard
               label="Perplexity Visibility"
-              value={perplexity?.score ?? 21}
+              value={perplexity?.score ?? 0}
               suffix="%"
-              trend={4}
             />
             <MetricCard
               label="Gemini Visibility"
-              value={gemini?.score ?? 5}
+              value={gemini?.score ?? 0}
               suffix="%"
-              trend={-1}
             />
             <MetricCard
               label="Pending Fixes"
-              value={pendingFixes.length || 14}
+              value={pendingFixes.length}
             />
           </>
         )}
@@ -264,16 +251,3 @@ export function DashboardHome() {
 }
 
 
-const MOCK_FIXES = [
-  { id: '1', fix_type: 'description' as const, priority: 'high' as const, title: 'Rewrite leather wallet product description', est_impact: 23, explanation: '', original: {}, generated: {}, status: 'pending' as const, target_gid: '', created_at: '' },
-  { id: '2', fix_type: 'faq' as const, priority: 'high' as const, title: 'Add FAQ page with common buyer questions', est_impact: 18, explanation: '', original: {}, generated: {}, status: 'pending' as const, target_gid: '', created_at: '' },
-  { id: '3', fix_type: 'schema' as const, priority: 'medium' as const, title: 'Add Product schema markup to all items', est_impact: 11, explanation: '', original: {}, generated: {}, status: 'pending' as const, target_gid: '', created_at: '' },
-];
-
-const MOCK_COMPETITORS = [
-  { name: 'Bellroy', platform: 'chatgpt', position: 1, frequency: 89 },
-  { name: 'Fossil', platform: 'gemini', position: 2, frequency: 54 },
-  { name: 'Herschel', platform: 'perplexity', position: 3, frequency: 31 },
-  { name: 'Travelsmith', platform: 'chatgpt', position: 2, frequency: 28 },
-  { name: 'MVMT', platform: 'perplexity', position: 1, frequency: 22 },
-];

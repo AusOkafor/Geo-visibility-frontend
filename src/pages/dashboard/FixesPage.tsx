@@ -4,7 +4,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { useFixes } from '../../hooks/useApi';
+import { useFixes, useRejectFix } from '../../hooks/useApi';
 import type { Fix } from '../../types';
 
 const FIX_TYPE_COLORS: Record<string, string> = {
@@ -14,19 +14,8 @@ const FIX_TYPE_COLORS: Record<string, string> = {
   listing: '#64748B',
 };
 
-const MOCK_FIXES: Fix[] = [
-  { id: '1', fix_type: 'description', priority: 'high', title: 'Rewrite leather wallet product description', explanation: 'Your description is 210 words. AI-cited competitors average 884 words. Expanding with FAQ content and semantic keywords will significantly increase your citation rate.', original: {}, generated: {}, est_impact: 23, status: 'pending', target_gid: 'gid://shopify/Product/1', created_at: '' },
-  { id: '2', fix_type: 'faq', priority: 'high', title: 'Add FAQ page with common buyer questions', explanation: 'No FAQ page detected. Perplexity and ChatGPT heavily cite stores with structured FAQ content answering buyer intent queries.', original: {}, generated: {}, est_impact: 18, status: 'pending', target_gid: '', created_at: '' },
-  { id: '3', fix_type: 'schema', priority: 'high', title: 'Add Product schema markup to all items', explanation: 'Missing structured data on product pages. Schema markup increases likelihood of AI citation by providing machine-readable product attributes.', original: {}, generated: {}, est_impact: 11, status: 'pending', target_gid: '', created_at: '' },
-  { id: '4', fix_type: 'description', priority: 'medium', title: 'Expand leather belt collection description', explanation: 'Belt category pages have minimal content. Adding detailed material and sizing information improves AI discoverability.', original: {}, generated: {}, est_impact: 9, status: 'pending', target_gid: 'gid://shopify/Product/2', created_at: '' },
-  { id: '5', fix_type: 'listing', priority: 'medium', title: 'Submit to Wirecutter Product Index', explanation: 'Bellroy and Fossil both appear in Wirecutter. A listing submission could significantly improve your ChatGPT citation rate.', original: {}, generated: {}, est_impact: 14, status: 'pending', target_gid: '', created_at: '' },
-  { id: '6', fix_type: 'faq', priority: 'medium', title: 'Add leather care FAQ to product pages', explanation: 'Buyers frequently ask about leather maintenance. Adding this content targets informational queries where competitors are cited.', original: {}, generated: {}, est_impact: 7, status: 'pending', target_gid: '', created_at: '' },
-  { id: '7', fix_type: 'schema', priority: 'medium', title: 'Add BreadcrumbList schema to navigation', explanation: 'Improves AI ability to understand site structure and category hierarchy.', original: {}, generated: {}, est_impact: 5, status: 'pending', target_gid: '', created_at: '' },
-  { id: '8', fix_type: 'listing', priority: 'low', title: 'Submit to GQ Style Directory', explanation: 'GQ is a high-authority source frequently cited by Perplexity for men\'s accessories.', original: {}, generated: {}, est_impact: 6, status: 'pending', target_gid: '', created_at: '' },
-  { id: '9', fix_type: 'description', priority: 'low', title: 'Add sustainability section to About page', explanation: 'Eco-conscious leather brands are increasingly cited in ChatGPT recommendations.', original: {}, generated: {}, est_impact: 4, status: 'pending', target_gid: '', created_at: '' },
-];
 
-function FixCard({ fix }: { fix: Fix }) {
+function FixCard({ fix, onDismiss }: { fix: Fix; onDismiss: (id: string) => void }) {
   const navigate = useNavigate();
   const typeColor = FIX_TYPE_COLORS[fix.fix_type] ?? '#64748B';
 
@@ -79,6 +68,7 @@ function FixCard({ fix }: { fix: Fix }) {
               Review & Apply
             </button>
             <button
+              onClick={() => onDismiss(fix.id)}
               className="text-[12px] transition-colors"
               style={{ color: '#64748B' }}
             >
@@ -117,9 +107,14 @@ const PRIORITY_ORDER: Fix['priority'][] = ['high', 'medium', 'low'];
 export function FixesPage() {
   const [filter, setFilter] = useState<'all' | 'high'>('all');
   const { data: fixes, isLoading } = useFixes('pending');
+  const rejectFix = useRejectFix();
 
-  const allFixes = fixes?.length ? fixes : MOCK_FIXES;
+  const allFixes = fixes ?? [];
   const filtered = filter === 'high' ? allFixes.filter((f) => f.priority === 'high') : allFixes;
+
+  function handleDismiss(id: string) {
+    rejectFix.mutate(id);
+  }
   const totalImpact = allFixes.reduce((sum, f) => sum + f.est_impact, 0);
 
   return (
@@ -230,7 +225,7 @@ export function FixesPage() {
                 </div>
                 <div className="space-y-3">
                   {group.map((fix) => (
-                    <FixCard key={fix.id} fix={fix} />
+                    <FixCard key={fix.id} fix={fix} onDismiss={handleDismiss} />
                   ))}
                 </div>
               </div>
