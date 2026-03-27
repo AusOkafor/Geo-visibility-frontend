@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
 import { Check, X, ArrowRight, ShoppingBag, Shield, Zap } from 'lucide-react';
 import { getOAuthURL } from '../lib/api';
 
