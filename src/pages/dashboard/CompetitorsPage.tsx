@@ -294,7 +294,7 @@ export function CompetitorsPage() {
                   contentStyle={{ background: '#1a1a1f', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6 }}
                   labelStyle={{ color: '#94a3b8', fontSize: 12 }}
                   itemStyle={{ color: '#ffffff', fontSize: 12 }}
-                  formatter={(val: number) => [`${val} citations`, 'Frequency']}
+                  formatter={(val) => [`${val} citations`, 'Frequency']}
                 />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                   {chartData.map((entry) => (
