@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Store } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { useMerchant } from '../../hooks/useApi';
+import { useMerchant, useUpdateMerchant } from '../../hooks/useApi';
 
 interface ToggleProps {
   checked: boolean;
@@ -89,14 +90,27 @@ function Card({ title, children, redBorder = false }: { title: string; children:
 
 export function SettingsPage() {
   const { data: merchant } = useMerchant();
+  const updateMerchant = useUpdateMerchant();
+  const navigate = useNavigate();
   const [disconnectConfirm, setDisconnectConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [scanFreq, setScanFreq] = useState<'daily' | 'weekly'>('daily');
   const [scanFreqDirty, setScanFreqDirty] = useState(false);
   const [scanTime, setScanTime] = useState('02:00');
   const [scanTimeDirty, setScanTimeDirty] = useState(false);
-  const [email, setEmail] = useState('owner@oakwoodleather.com');
+  const [email, setEmail] = useState('');
   const [emailDirty, setEmailDirty] = useState(false);
+
+  const [brandName, setBrandName] = useState('');
+  const [category, setCategory] = useState('');
+  const [profileDirty, setProfileDirty] = useState(false);
+
+  useEffect(() => {
+    if (merchant) {
+      setBrandName(merchant.brand_name ?? '');
+      setCategory(merchant.category ?? '');
+    }
+  }, [merchant]);
 
   const [notifs, setNotifs] = useState({
     weeklyReport: true,
@@ -128,25 +142,28 @@ export function SettingsPage() {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-white text-[14px] font-medium">
-                  {merchant?.shop_domain ?? 'oakwoodleather.myshopify.com'}
+                  {merchant?.shop_domain ?? '—'}
                 </span>
                 <span className="flex items-center gap-1 text-[11px]" style={{ color: '#00D4FF' }}>
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00D4FF]" />
                   Connected
                 </span>
               </div>
-              <p className="text-[13px]" style={{ color: '#64748B' }}>
-                Connected on March 1, 2026
-              </p>
+              {merchant?.installed_at && (
+                <p className="text-[13px]" style={{ color: '#64748B' }}>
+                  Connected on {new Date(merchant.installed_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </p>
+              )}
             </div>
           </div>
           {disconnectConfirm ? (
             <div className="text-right">
               <p className="text-[12px] mb-2" style={{ color: '#EF4444' }}>
-                This will remove all your data. Are you sure?
+                Disconnect this store?
               </p>
               <div className="flex gap-2 justify-end">
                 <button
+                  onClick={() => { localStorage.removeItem('geo_session_token'); navigate('/'); }}
                   className="text-[12px] px-3 py-1 rounded"
                   style={{ background: '#EF444422', color: '#EF4444', border: '1px solid #EF444444' }}
                 >
@@ -171,6 +188,48 @@ export function SettingsPage() {
             </button>
           )}
         </div>
+      </Card>
+
+      {/* Store profile */}
+      <Card title="Store profile">
+        <p className="text-[13px] mb-4" style={{ color: '#64748B' }}>
+          Used to generate accurate scan queries and AI fix recommendations.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <label className="text-[12px] block mb-1" style={{ color: '#94a3b8' }}>Brand name</label>
+            <input
+              type="text"
+              value={brandName}
+              placeholder="e.g. Oakwood Leather Co."
+              onChange={(e) => { setBrandName(e.target.value); setProfileDirty(true); }}
+              className="w-full text-[13px] px-3 py-2 rounded"
+              style={{ background: '#0d0d10', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff' }}
+            />
+          </div>
+          <div>
+            <label className="text-[12px] block mb-1" style={{ color: '#94a3b8' }}>Product category</label>
+            <input
+              type="text"
+              value={category}
+              placeholder="e.g. leather wallets, handbags, accessories"
+              onChange={(e) => { setCategory(e.target.value); setProfileDirty(true); }}
+              className="w-full text-[13px] px-3 py-2 rounded"
+              style={{ background: '#0d0d10', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff' }}
+            />
+          </div>
+        </div>
+        {profileDirty && (
+          <div className="mt-3">
+            <SaveButton
+              dirty={profileDirty}
+              onSave={() => {
+                updateMerchant.mutate({ brand_name: brandName, category });
+                setProfileDirty(false);
+              }}
+            />
+          </div>
+        )}
       </Card>
 
       {/* Scan settings */}

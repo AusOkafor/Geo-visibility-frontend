@@ -54,3 +54,6 @@ export const approveFix = (id: string): Promise<Fix> =>
 
 export const rejectFix = (id: string): Promise<Fix> =>
   request(`/fixes/${id}/reject`, { method: 'POST' });
+
+export const updateMerchant = (data: { brand_name: string; category: string }): Promise<{ status: string }> =>
+  request('/merchant', { method: 'PATCH', body: JSON.stringify(data) });

@@ -3,8 +3,9 @@ export interface Merchant {
   shop_domain: string;
   brand_name: string;
   category: string;
-  plan: 'starter' | 'growth' | 'pro';
+  plan: 'free' | 'starter' | 'growth' | 'pro';
   active: boolean;
+  installed_at: string;
 }
 
 export interface VisibilityScore {

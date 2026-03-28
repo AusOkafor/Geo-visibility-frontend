@@ -53,3 +53,13 @@ export const useRejectFix = () => {
     },
   });
 };
+
+export const useUpdateMerchant = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.updateMerchant,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['merchant'] });
+    },
+  });
+};
