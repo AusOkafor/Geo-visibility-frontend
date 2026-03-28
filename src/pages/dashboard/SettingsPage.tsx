@@ -110,14 +110,23 @@ export function SettingsPage() {
   );
   const [emailDirty, setEmailDirty] = useState(false);
 
-  const [brandName, setBrandName] = useState('');
-  const [category, setCategory] = useState('');
+  const [brandName, setBrandName] = useState(
+    () => localStorage.getItem('settings_brand_name') ?? ''
+  );
+  const [category, setCategory] = useState(
+    () => localStorage.getItem('settings_category') ?? ''
+  );
   const [profileDirty, setProfileDirty] = useState(false);
 
   useEffect(() => {
     if (merchant) {
-      setBrandName(merchant.brand_name ?? '');
-      setCategory(merchant.category ?? '');
+      // Only seed from API if localStorage has no saved value yet
+      if (!localStorage.getItem('settings_brand_name')) {
+        setBrandName(merchant.brand_name ?? '');
+      }
+      if (!localStorage.getItem('settings_category')) {
+        setCategory(merchant.category ?? '');
+      }
     }
   }, [merchant]);
 
@@ -236,6 +245,8 @@ export function SettingsPage() {
             <SaveButton
               dirty={profileDirty}
               onSave={() => {
+                localStorage.setItem('settings_brand_name', brandName);
+                localStorage.setItem('settings_category', category);
                 updateMerchant.mutate({ brand_name: brandName, category });
                 setProfileDirty(false);
               }}
