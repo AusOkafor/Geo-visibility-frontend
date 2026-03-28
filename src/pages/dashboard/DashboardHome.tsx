@@ -236,9 +236,9 @@ export function DashboardHome() {
               {compList.slice(0, 5).map((comp, i) => (
                 <div key={i} className="flex items-center gap-3 py-1.5">
                   <span className="flex-1 text-[13px] text-white">{comp.name}</span>
-                  <PlatformBadge platform={comp.platform as any} />
+                  {comp.platforms[0] && <PlatformBadge platform={comp.platforms[0] as any} />}
                   <span className="text-[11px]" style={{ color: '#64748B' }}>
-                    Cited {comp.frequency}× this week
+                    Cited {comp.total_frequency}× this week
                   </span>
                 </div>
               ))}
