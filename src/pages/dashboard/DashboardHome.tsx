@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { X, CheckCircle, Users, ChevronRight, BarChart2 } from 'lucide-react';
+import { X, CheckCircle, Users, ChevronRight, BarChart2, RefreshCw } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -17,7 +17,7 @@ import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PlatformBadge } from '../../components/ui/PlatformBadge';
 import { PriorityDot } from '../../components/ui/PriorityDot';
-import { useMerchant, useVisibilityScores, useDailyScores, useFixes, useCompetitors } from '../../hooks/useApi';
+import { useMerchant, useVisibilityScores, useDailyScores, useFixes, useCompetitors, useTriggerScan } from '../../hooks/useApi';
 import { formatDate } from '../../lib/utils';
 
 
@@ -44,12 +44,14 @@ export function DashboardHome() {
   const [welcomeDismissed, setWelcomeDismissed] = useState(
     () => localStorage.getItem('welcome_dismissed') === 'true'
   );
+  const [scanQueued, setScanQueued] = useState(false);
 
   const { data: merchant } = useMerchant();
   const { data: scores, isLoading: scoresLoading } = useVisibilityScores(30);
   const { data: daily, isLoading: dailyLoading } = useDailyScores(30);
   const { data: fixes, isLoading: fixesLoading } = useFixes('pending');
   const { data: competitors, isLoading: compLoading } = useCompetitors();
+  const triggerScan = useTriggerScan();
 
   const chatgpt = scores?.find((s) => s.platform === 'chatgpt');
   const perplexity = scores?.find((s) => s.platform === 'perplexity');
@@ -64,11 +66,40 @@ export function DashboardHome() {
     setWelcomeDismissed(true);
   }
 
+  function handleRunScan() {
+    triggerScan.mutate(undefined, {
+      onSuccess: () => {
+        setScanQueued(true);
+        setTimeout(() => setScanQueued(false), 60000);
+      },
+    });
+  }
+
   return (
     <div className="pb-20 md:pb-0">
       <PageHeader
         title="Dashboard"
         subtitle="AI visibility overview — last 30 days"
+        action={
+          <button
+            onClick={handleRunScan}
+            disabled={triggerScan.isPending || scanQueued}
+            className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium transition-all"
+            style={{
+              background: scanQueued ? 'rgba(0,212,255,0.08)' : 'rgba(0,212,255,0.12)',
+              border: '1px solid rgba(0,212,255,0.25)',
+              color: scanQueued ? '#64748B' : '#00D4FF',
+              cursor: triggerScan.isPending || scanQueued ? 'not-allowed' : 'pointer',
+              opacity: triggerScan.isPending || scanQueued ? 0.6 : 1,
+            }}
+          >
+            <RefreshCw
+              size={13}
+              className={triggerScan.isPending ? 'animate-spin' : ''}
+            />
+            {triggerScan.isPending ? 'Queuing…' : scanQueued ? 'Scan queued' : 'Run Scan'}
+          </button>
+        }
       />
 
       {/* Welcome banner */}

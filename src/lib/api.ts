@@ -57,3 +57,6 @@ export const rejectFix = (id: string): Promise<Fix> =>
 
 export const updateMerchant = (data: { brand_name: string; category: string }): Promise<{ status: string }> =>
   request('/merchant', { method: 'PATCH', body: JSON.stringify(data) });
+
+export const triggerScan = (): Promise<{ status: string }> =>
+  request('/scans', { method: 'POST' });
