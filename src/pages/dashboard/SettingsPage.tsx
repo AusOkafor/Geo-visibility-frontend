@@ -120,13 +120,16 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (merchant) {
-      // Only seed from API if localStorage has no saved value yet
-      if (!localStorage.getItem('settings_brand_name')) {
-        setBrandName(merchant.brand_name ?? '');
-      }
-      if (!localStorage.getItem('settings_category')) {
-        setCategory(merchant.category ?? '');
-      }
+      const storedName = localStorage.getItem('settings_brand_name');
+      const storedCategory = localStorage.getItem('settings_category');
+      // Use localStorage if present (user explicitly saved); otherwise fall back to API
+      const resolvedName = storedName ?? merchant.brand_name ?? '';
+      const resolvedCategory = storedCategory ?? merchant.category ?? '';
+      setBrandName(resolvedName);
+      setCategory(resolvedCategory);
+      // Always keep localStorage in sync with what we're showing
+      localStorage.setItem('settings_brand_name', resolvedName);
+      localStorage.setItem('settings_category', resolvedCategory);
     }
   }, [merchant]);
 
