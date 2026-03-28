@@ -115,7 +115,7 @@ export function DashboardHome() {
         >
           <div>
             <p className="font-medium text-white text-[14px] mb-1">
-              Welcome to GeoVisibility, {merchant?.brand_name ?? 'Oakwood Leather Co.'}
+              Welcome to GeoVisibility, {localStorage.getItem('settings_brand_name') || merchant?.brand_name || 'your store'}
             </p>
             <p className="text-[13px]" style={{ color: '#64748B' }}>
               Your first scan is running now. Results will appear within a few minutes.
