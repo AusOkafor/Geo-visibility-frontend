@@ -94,11 +94,20 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const [disconnectConfirm, setDisconnectConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const [scanFreq, setScanFreq] = useState<'daily' | 'weekly'>('daily');
+
+  const [scanFreq, setScanFreq] = useState<'daily' | 'weekly'>(
+    () => (localStorage.getItem('settings_scan_freq') as 'daily' | 'weekly') ?? 'daily'
+  );
   const [scanFreqDirty, setScanFreqDirty] = useState(false);
-  const [scanTime, setScanTime] = useState('02:00');
+
+  const [scanTime, setScanTime] = useState(
+    () => localStorage.getItem('settings_scan_time') ?? '02:00'
+  );
   const [scanTimeDirty, setScanTimeDirty] = useState(false);
-  const [email, setEmail] = useState('');
+
+  const [email, setEmail] = useState(
+    () => localStorage.getItem('settings_notif_email') ?? ''
+  );
   const [emailDirty, setEmailDirty] = useState(false);
 
   const [brandName, setBrandName] = useState('');
@@ -112,11 +121,12 @@ export function SettingsPage() {
     }
   }, [merchant]);
 
-  const [notifs, setNotifs] = useState({
-    weeklyReport: true,
-    visibilityDrop: true,
-    newFixes: true,
-    competitorGain: false,
+  const [notifs, setNotifs] = useState(() => {
+    const stored = localStorage.getItem('settings_notifs');
+    if (stored) {
+      try { return JSON.parse(stored); } catch { /* fall through */ }
+    }
+    return { weeklyReport: true, visibilityDrop: true, newFixes: true, competitorGain: false };
   });
   const [notifDirty, setNotifDirty] = useState(false);
 
@@ -256,7 +266,7 @@ export function SettingsPage() {
         <p className="text-[12px] mb-4" style={{ color: '#64748B' }}>
           Daily scans use more quota but catch changes faster.
         </p>
-        <SaveButton dirty={scanFreqDirty} onSave={() => setScanFreqDirty(false)} />
+        <SaveButton dirty={scanFreqDirty} onSave={() => { localStorage.setItem('settings_scan_freq', scanFreq); setScanFreqDirty(false); }} />
 
         <div
           className="mt-4 pt-4"
@@ -282,7 +292,7 @@ export function SettingsPage() {
                 }}
               />
               <span className="text-[12px]" style={{ color: '#64748B' }}>UTC</span>
-              <SaveButton dirty={scanTimeDirty} onSave={() => setScanTimeDirty(false)} />
+              <SaveButton dirty={scanTimeDirty} onSave={() => { localStorage.setItem('settings_scan_time', scanTime); setScanTimeDirty(false); }} />
             </div>
           </div>
         </div>
@@ -320,12 +330,12 @@ export function SettingsPage() {
                 color: '#ffffff',
               }}
             />
-            <SaveButton dirty={emailDirty} onSave={() => setEmailDirty(false)} />
+            <SaveButton dirty={emailDirty} onSave={() => { localStorage.setItem('settings_notif_email', email); setEmailDirty(false); }} />
           </div>
         </div>
         {notifDirty && (
           <div className="mt-3">
-            <SaveButton dirty={notifDirty} onSave={() => setNotifDirty(false)} />
+            <SaveButton dirty={notifDirty} onSave={() => { localStorage.setItem('settings_notifs', JSON.stringify(notifs)); setNotifDirty(false); }} />
           </div>
         )}
       </Card>
