@@ -121,12 +121,14 @@ export function SettingsPage() {
     }
   }, [merchant]);
 
-  const [notifs, setNotifs] = useState(() => {
+  type NotifState = { weeklyReport: boolean; visibilityDrop: boolean; newFixes: boolean; competitorGain: boolean };
+  const defaultNotifs: NotifState = { weeklyReport: true, visibilityDrop: true, newFixes: true, competitorGain: false };
+  const [notifs, setNotifs] = useState<NotifState>(() => {
     const stored = localStorage.getItem('settings_notifs');
     if (stored) {
-      try { return JSON.parse(stored); } catch { /* fall through */ }
+      try { return JSON.parse(stored) as NotifState; } catch { /* fall through */ }
     }
-    return { weeklyReport: true, visibilityDrop: true, newFixes: true, competitorGain: false };
+    return defaultNotifs;
   });
   const [notifDirty, setNotifDirty] = useState(false);
 
