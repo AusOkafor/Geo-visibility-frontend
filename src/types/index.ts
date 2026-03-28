@@ -25,9 +25,12 @@ export interface DailyScore {
 
 export interface Competitor {
   name: string;
-  platform: string;
-  position: number;
-  frequency: number;
+  platforms: string[];
+  best_position: number;
+  total_frequency: number;
+  total_scans: number;
+  score: number;
+  why_points: string[];
 }
 
 export interface Fix {
