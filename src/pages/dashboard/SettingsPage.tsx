@@ -243,19 +243,38 @@ export function SettingsPage() {
             />
           </div>
         </div>
-        {profileDirty && (
-          <div className="mt-3">
-            <SaveButton
-              dirty={profileDirty}
-              onSave={() => {
-                localStorage.setItem('settings_brand_name', brandName);
-                localStorage.setItem('settings_category', category);
-                updateMerchant.mutate({ brand_name: brandName, category });
-                setProfileDirty(false);
-              }}
-            />
-          </div>
-        )}
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            onClick={() => {
+              updateMerchant.mutate(
+                { brand_name: brandName, category },
+                {
+                  onSuccess: () => {
+                    localStorage.setItem('settings_brand_name', brandName);
+                    localStorage.setItem('settings_category', category);
+                    setProfileDirty(false);
+                  },
+                }
+              );
+            }}
+            disabled={updateMerchant.isPending || !profileDirty}
+            className="text-[12px] px-3 py-1.5 rounded transition-all"
+            style={{
+              background: updateMerchant.isSuccess && !profileDirty ? 'rgba(0,212,255,0.1)' : '#00D4FF',
+              color: updateMerchant.isSuccess && !profileDirty ? '#00D4FF' : '#0A0A0B',
+              opacity: !profileDirty && !updateMerchant.isSuccess ? 0.4 : 1,
+              cursor: !profileDirty ? 'default' : 'pointer',
+              borderRadius: 6,
+            }}
+          >
+            {updateMerchant.isPending ? 'Saving...' : updateMerchant.isSuccess && !profileDirty ? 'Saved ✓' : 'Save'}
+          </button>
+          {updateMerchant.isError && (
+            <span className="text-[12px]" style={{ color: '#EF4444' }}>
+              Failed to save — check your connection
+            </span>
+          )}
+        </div>
       </Card>
 
       {/* Scan settings */}
