@@ -5,112 +5,80 @@ import {
 } from 'recharts';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PlatformBadge } from '../../components/ui/PlatformBadge';
+import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useCompetitors, useMerchant } from '../../hooks/useApi';
+import type { Competitor } from '../../types';
 
 type Platform = 'chatgpt' | 'perplexity' | 'gemini';
 
-const COMPETITORS = [
-  {
-    name: 'Bellroy',
-    platforms: ['chatgpt', 'perplexity', 'gemini'],
-    position: '1st',
-    frequency: 89,
-    vsDiff: '+72 citations',
-    trend: '↑ gaining',
-    trendUp: true,
-    queries: ['Best leather wallets under $100', 'Top wallet brands 2026', 'Minimalist wallets for men'],
-    insights: [
-      '884-word product descriptions (yours avg 210)',
-      'Active on Wirecutter, GQ, and 4 niche directories',
-      '94 Google reviews with specific product keywords',
-    ],
-  },
-  {
-    name: 'Fossil',
-    platforms: ['chatgpt', 'gemini'],
-    position: '2nd',
-    frequency: 54,
-    vsDiff: '+37 citations',
-    trend: '→ stable',
-    trendUp: null,
-    queries: ['Leather accessories under $150', 'Best gift wallets 2026'],
-    insights: [
-      'Complete brand presence on Google Shopping',
-      'Regular editorial coverage in men\'s lifestyle press',
-      'Strong FAQ content on all product pages',
-    ],
-  },
-  {
-    name: 'Herschel',
-    platforms: ['perplexity'],
-    position: '3rd',
-    frequency: 31,
-    vsDiff: '+14 citations',
-    trend: '↓ losing',
-    trendUp: false,
-    queries: ['Handmade leather wallet recommendations'],
-    insights: [
-      'Strong on Perplexity via niche blog citations',
-      'Product schema markup on all pages',
-      'Detailed material specifications listed prominently',
-    ],
-  },
-  {
-    name: 'Travelsmith',
-    platforms: ['chatgpt'],
-    position: '2nd',
-    frequency: 28,
-    vsDiff: '+11 citations',
-    trend: '↑ gaining',
-    trendUp: true,
-    queries: ['Travel accessories leather', 'Durable leather wallets'],
-    insights: [
-      'Long-form travel-focused product descriptions',
-      'Featured in travel gear review roundups',
-      'High review count with keyword-rich content',
-    ],
-  },
-  {
-    name: 'MVMT',
-    platforms: ['perplexity', 'gemini'],
-    position: '1st',
-    frequency: 22,
-    vsDiff: '+5 citations',
-    trend: '→ stable',
-    trendUp: null,
-    queries: ['Modern leather accessories brands'],
-    insights: [
-      'Well-structured product catalog with rich metadata',
-      'Strong social proof with featured reviews',
-      'Active on multiple lifestyle directories',
-    ],
-  },
-];
+interface GroupedCompetitor {
+  name: string;
+  platforms: Platform[];
+  totalFrequency: number;
+  bestPosition: number;
+  byPlatform: Record<string, { position: number; frequency: number }>;
+}
 
-const PLATFORM_DATA: Record<Platform, { name: string; value: number }[]> = {
-  chatgpt: [
-    { name: 'Bellroy', value: 89 },
-    { name: 'Fossil', value: 54 },
-    { name: 'Travelsmith', value: 28 },
-    { name: 'You', value: 17 },
-  ],
-  perplexity: [
-    { name: 'Bellroy', value: 72 },
-    { name: 'Herschel', value: 31 },
-    { name: 'MVMT', value: 22 },
-    { name: 'You', value: 17 },
-  ],
-  gemini: [
-    { name: 'Bellroy', value: 60 },
-    { name: 'Fossil', value: 40 },
-    { name: 'MVMT', value: 18 },
-    { name: 'You', value: 5 },
-  ],
-};
+function groupCompetitors(rows: Competitor[]): GroupedCompetitor[] {
+  const map = new Map<string, GroupedCompetitor>();
+  for (const row of rows) {
+    const existing = map.get(row.name);
+    if (!existing) {
+      map.set(row.name, {
+        name: row.name,
+        platforms: [row.platform as Platform],
+        totalFrequency: row.frequency,
+        bestPosition: row.position,
+        byPlatform: { [row.platform]: { position: row.position, frequency: row.frequency } },
+      });
+    } else {
+      if (!existing.platforms.includes(row.platform as Platform)) {
+        existing.platforms.push(row.platform as Platform);
+      }
+      existing.totalFrequency += row.frequency;
+      if (row.position > 0 && (existing.bestPosition === 0 || row.position < existing.bestPosition)) {
+        existing.bestPosition = row.position;
+      }
+      existing.byPlatform[row.platform] = { position: row.position, frequency: row.frequency };
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.totalFrequency - a.totalFrequency);
+}
+
+function positionLabel(pos: number): string {
+  if (pos === 1) return '1st';
+  if (pos === 2) return '2nd';
+  if (pos === 3) return '3rd';
+  if (pos > 3) return `${pos}th`;
+  return '—';
+}
 
 export function CompetitorsPage() {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<Platform>('chatgpt');
+
+  const { data: rawCompetitors, isLoading } = useCompetitors();
+  const { data: merchant } = useMerchant();
+
+  const competitors = rawCompetitors ? groupCompetitors(rawCompetitors) : [];
+  const topCompetitor = competitors[0];
+  const brandName = merchant?.brand_name || merchant?.shop_domain || 'You';
+
+  // Per-platform chart data: top competitors on that platform + "You"
+  const platformChartData = (platform: Platform) => {
+    if (!rawCompetitors) return [];
+    const rows = rawCompetitors
+      .filter((r) => r.platform === platform)
+      .sort((a, b) => b.frequency - a.frequency)
+      .slice(0, 4)
+      .map((r) => ({ name: r.name, value: r.frequency }));
+    return rows;
+  };
+
+  const chartData = platformChartData(activeTab);
+
+  const emptyState = !isLoading && competitors.length === 0;
 
   return (
     <div className="pb-20 md:pb-0">
@@ -124,19 +92,27 @@ export function CompetitorsPage() {
         className="flex items-center gap-0 mb-6 text-[13px] rounded-[6px] px-5 py-3 overflow-x-auto"
         style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
       >
-        <span className="text-white whitespace-nowrap">
-          <span className="font-mono font-bold">14</span>{' '}
-          <span style={{ color: '#64748B' }}>competitors detected</span>
-        </span>
-        <span className="mx-4" style={{ color: '#334155' }}>|</span>
-        <span className="whitespace-nowrap">
-          <span className="font-mono font-bold text-white">Bellroy</span>{' '}
-          <span style={{ color: '#64748B' }}>appears 3× more often</span>
-        </span>
-        <span className="mx-4" style={{ color: '#334155' }}>|</span>
-        <span className="whitespace-nowrap" style={{ color: '#64748B' }}>
-          You rank below all of them
-        </span>
+        {isLoading ? (
+          <LoadingSkeleton height="16px" className="w-64" />
+        ) : emptyState ? (
+          <span style={{ color: '#64748B' }}>No competitor data yet — run a scan to see results</span>
+        ) : (
+          <>
+            <span className="text-white whitespace-nowrap">
+              <span className="font-mono font-bold">{competitors.length}</span>{' '}
+              <span style={{ color: '#64748B' }}>competitors detected</span>
+            </span>
+            {topCompetitor && (
+              <>
+                <span className="mx-4" style={{ color: '#334155' }}>|</span>
+                <span className="whitespace-nowrap">
+                  <span className="font-mono font-bold text-white">{topCompetitor.name}</span>{' '}
+                  <span style={{ color: '#64748B' }}>appears most often ({topCompetitor.totalFrequency} citations)</span>
+                </span>
+              </>
+            )}
+          </>
+        )}
       </div>
 
       {/* Competitor table */}
@@ -150,186 +126,190 @@ export function CompetitorsPage() {
           style={{
             color: '#64748B',
             borderBottom: '1px solid rgba(255,255,255,0.05)',
-            gridTemplateColumns: '2fr 2fr 80px 130px 140px 100px 32px',
+            gridTemplateColumns: '2fr 2fr 80px 160px 32px',
           }}
         >
           <span>Competitor</span>
           <span>Platforms</span>
           <span>Position</span>
           <span>Frequency</span>
-          <span>vs. You</span>
-          <span>Trend</span>
           <span />
         </div>
 
-        {COMPETITORS.map((comp, i) => (
-          <div key={comp.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-            <button
-              className="w-full text-left transition-colors hover:bg-white/[0.02]"
-              onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
-            >
-              <div
-                className="grid items-center px-5"
-                style={{
-                  height: 56,
-                  gridTemplateColumns: '2fr 2fr 80px 130px 140px 100px 32px',
-                }}
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <LoadingSkeleton height="20px" />
+            </div>
+          ))
+        ) : emptyState ? (
+          <div className="px-5 py-8 text-center text-[13px]" style={{ color: '#64748B' }}>
+            No competitor data yet. Scan results will appear here after your first scan completes.
+          </div>
+        ) : (
+          competitors.map((comp, i) => (
+            <div key={comp.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <button
+                className="w-full text-left transition-colors hover:bg-white/[0.02]"
+                onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
               >
-                <span className="font-medium text-white text-[13px]">{comp.name}</span>
-                <span className="flex gap-2 flex-wrap">
-                  {comp.platforms.map((p) => (
-                    <PlatformBadge key={p} platform={p as Platform} />
-                  ))}
-                </span>
-                <span className="font-mono text-[13px] text-white">{comp.position}</span>
-                <span className="text-[13px] text-white">{comp.frequency} times this week</span>
-                <span className="text-[13px] font-mono" style={{ color: '#EF4444' }}>
-                  {comp.vsDiff} vs. you
-                </span>
-                <span
-                  className="text-[12px]"
+                <div
+                  className="grid items-center px-5"
                   style={{
-                    color: comp.trendUp === true ? '#00D4FF' : comp.trendUp === false ? '#EF4444' : '#64748B',
+                    height: 56,
+                    gridTemplateColumns: '2fr 2fr 80px 160px 32px',
                   }}
                 >
-                  {comp.trend}
-                </span>
-                {expandedIdx === i ? (
-                  <ChevronUp size={14} style={{ color: '#64748B' }} />
-                ) : (
-                  <ChevronDown size={14} style={{ color: '#64748B' }} />
-                )}
-              </div>
-            </button>
+                  <span className="font-medium text-white text-[13px]">{comp.name}</span>
+                  <span className="flex gap-2 flex-wrap">
+                    {comp.platforms.map((p) => (
+                      <PlatformBadge key={p} platform={p} />
+                    ))}
+                  </span>
+                  <span className="font-mono text-[13px] text-white">
+                    {positionLabel(comp.bestPosition)}
+                  </span>
+                  <span className="text-[13px] text-white">
+                    {comp.totalFrequency}× in last 30d
+                  </span>
+                  {expandedIdx === i ? (
+                    <ChevronUp size={14} style={{ color: '#64748B' }} />
+                  ) : (
+                    <ChevronDown size={14} style={{ color: '#64748B' }} />
+                  )}
+                </div>
+              </button>
 
-            {/* Accordion expand */}
-            <div
-              className="overflow-hidden transition-all duration-300"
-              style={{
-                maxHeight: expandedIdx === i ? 300 : 0,
-                opacity: expandedIdx === i ? 1 : 0,
-              }}
-            >
+              {/* Accordion expand */}
               <div
-                className="grid grid-cols-1 md:grid-cols-3 gap-5 p-5"
+                className="overflow-hidden transition-all duration-300"
                 style={{
-                  background: '#0d0d10',
-                  borderTop: '1px solid rgba(255,255,255,0.05)',
+                  maxHeight: expandedIdx === i ? 220 : 0,
+                  opacity: expandedIdx === i ? 1 : 0,
                 }}
               >
-                <div>
-                  <p className="text-[11px] uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
-                    Queries they win
-                  </p>
-                  <ul className="space-y-1">
-                    {comp.queries.map((q) => (
-                      <li key={q} className="text-[13px] text-white flex items-start gap-1.5">
-                        <span style={{ color: '#EF4444' }}>✗</span> {q}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
-                    What they do differently
-                  </p>
-                  <ul className="space-y-1.5">
-                    {comp.insights.map((ins) => (
-                      <li key={ins} className="text-[13px]" style={{ color: '#94a3b8' }}>
-                        • {ins}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
-                    Recommendation
-                  </p>
-                  <p className="text-[13px] mb-3" style={{ color: '#94a3b8' }}>
-                    Add an FAQ page + expand descriptions to close this gap
-                  </p>
-                  <Link
-                    to="/dashboard/fixes"
-                    className="text-[13px]"
-                    style={{ color: '#00D4FF' }}
-                  >
-                    See relevant fixes →
-                  </Link>
+                <div
+                  className="grid grid-cols-1 md:grid-cols-2 gap-5 p-5"
+                  style={{
+                    background: '#0d0d10',
+                    borderTop: '1px solid rgba(255,255,255,0.05)',
+                  }}
+                >
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
+                      Per-platform breakdown
+                    </p>
+                    <div className="space-y-1.5">
+                      {Object.entries(comp.byPlatform).map(([plat, data]) => (
+                        <div key={plat} className="flex items-center gap-3 text-[13px]">
+                          <PlatformBadge platform={plat as Platform} />
+                          <span style={{ color: '#94a3b8' }}>
+                            Position {positionLabel(data.position)} — {data.frequency}× cited
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
+                      Recommendation
+                    </p>
+                    <p className="text-[13px] mb-3" style={{ color: '#94a3b8' }}>
+                      Improve your product descriptions and FAQ content to compete with {comp.name}
+                    </p>
+                    <Link
+                      to="/dashboard/fixes"
+                      className="text-[13px]"
+                      style={{ color: '#00D4FF' }}
+                    >
+                      See relevant fixes →
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
 
         {/* Your row */}
-        <div
-          className="grid items-center px-5"
-          style={{
-            height: 56,
-            gridTemplateColumns: '2fr 2fr 80px 130px 140px 100px 32px',
-            background: 'rgba(0,212,255,0.03)',
-            borderTop: '1px solid rgba(0,212,255,0.1)',
-          }}
-        >
-          <span className="font-medium text-[13px]" style={{ color: '#00D4FF' }}>
-            Oakwood Leather Co. (You)
-          </span>
-          <span className="flex gap-2">
-            {(['chatgpt', 'perplexity', 'gemini'] as Platform[]).map((p) => (
-              <PlatformBadge key={p} platform={p} />
-            ))}
-          </span>
-          <span className="font-mono text-[13px]" style={{ color: '#64748B' }}>Rarely</span>
-          <span className="text-[13px]" style={{ color: '#64748B' }}>17 times this week</span>
-          <span className="text-[13px]" style={{ color: '#64748B' }}>—</span>
-          <span className="text-[12px]" style={{ color: '#00D4FF' }}>↑ improving (with fixes)</span>
-          <span />
-        </div>
+        {!isLoading && !emptyState && (
+          <div
+            className="grid items-center px-5"
+            style={{
+              height: 56,
+              gridTemplateColumns: '2fr 2fr 80px 160px 32px',
+              background: 'rgba(0,212,255,0.03)',
+              borderTop: '1px solid rgba(0,212,255,0.1)',
+            }}
+          >
+            <span className="font-medium text-[13px]" style={{ color: '#00D4FF' }}>
+              {brandName} (You)
+            </span>
+            <span className="flex gap-2">
+              {(['chatgpt', 'perplexity', 'gemini'] as Platform[]).map((p) => (
+                <PlatformBadge key={p} platform={p} />
+              ))}
+            </span>
+            <span className="font-mono text-[13px]" style={{ color: '#64748B' }}>Rarely</span>
+            <span className="text-[13px]" style={{ color: '#64748B' }}>—</span>
+            <span />
+          </div>
+        )}
       </div>
 
       {/* Platform breakdown tabs */}
-      <div
-        className="rounded-[6px] p-5"
-        style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
-      >
-        <div className="flex items-center gap-0 mb-5">
-          {(['chatgpt', 'perplexity', 'gemini'] as Platform[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setActiveTab(p)}
-              className="px-4 py-1.5 text-[13px] capitalize transition-colors"
-              style={{
-                borderBottom: activeTab === p ? `2px solid #00D4FF` : '2px solid transparent',
-                color: activeTab === p ? '#ffffff' : '#64748B',
-                marginBottom: -1,
-              }}
-            >
-              {p === 'chatgpt' ? 'ChatGPT' : p === 'perplexity' ? 'Perplexity' : 'Gemini'}
-            </button>
-          ))}
-        </div>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={PLATFORM_DATA[activeTab]} margin={{ top: 4, right: 16, left: -24, bottom: 0 }}>
-            <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
-            <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'Space Mono' }} axisLine={false} tickLine={false} />
-            <Tooltip
-              contentStyle={{ background: '#1a1a1f', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6 }}
-              labelStyle={{ color: '#94a3b8', fontSize: 12 }}
-              itemStyle={{ color: '#ffffff', fontSize: 12 }}
-            />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-              {PLATFORM_DATA[activeTab].map((entry) => (
-                <Cell
-                  key={entry.name}
-                  fill={entry.name === 'You' ? '#00D4FF' : '#64748B'}
-                  fillOpacity={entry.name === 'You' ? 0.9 : 0.5}
+      {!isLoading && !emptyState && (
+        <div
+          className="rounded-[6px] p-5"
+          style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
+        >
+          <p className="font-medium text-white text-[15px] mb-4">Citation frequency by platform</p>
+          <div className="flex items-center gap-0 mb-5">
+            {(['chatgpt', 'perplexity', 'gemini'] as Platform[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setActiveTab(p)}
+                className="px-4 py-1.5 text-[13px] capitalize transition-colors"
+                style={{
+                  borderBottom: activeTab === p ? `2px solid #00D4FF` : '2px solid transparent',
+                  color: activeTab === p ? '#ffffff' : '#64748B',
+                  marginBottom: -1,
+                }}
+              >
+                {p === 'chatgpt' ? 'ChatGPT' : p === 'perplexity' ? 'Perplexity' : 'Gemini'}
+              </button>
+            ))}
+          </div>
+          {chartData.length === 0 ? (
+            <p className="text-[13px] py-8 text-center" style={{ color: '#64748B' }}>
+              No data for this platform yet
+            </p>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={chartData} margin={{ top: 4, right: 16, left: -24, bottom: 0 }}>
+                <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'Space Mono' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ background: '#1a1a1f', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6 }}
+                  labelStyle={{ color: '#94a3b8', fontSize: 12 }}
+                  itemStyle={{ color: '#ffffff', fontSize: 12 }}
+                  formatter={(val: number) => [`${val} citations`, 'Frequency']}
                 />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  {chartData.map((entry) => (
+                    <Cell
+                      key={entry.name}
+                      fill="#64748B"
+                      fillOpacity={0.6}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      )}
     </div>
   );
 }
