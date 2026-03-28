@@ -130,6 +130,13 @@ export function SettingsPage() {
       // Always keep localStorage in sync with what we're showing
       localStorage.setItem('settings_brand_name', resolvedName);
       localStorage.setItem('settings_category', resolvedCategory);
+      // If localStorage has values that differ from DB, enable Save so they sync
+      if (
+        (resolvedName && resolvedName !== (merchant.brand_name ?? '')) ||
+        (resolvedCategory && resolvedCategory !== (merchant.category ?? ''))
+      ) {
+        setProfileDirty(true);
+      }
     }
   }, [merchant]);
 
