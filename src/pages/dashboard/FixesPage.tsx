@@ -40,6 +40,14 @@ function FixCard({ fix, onDismiss }: { fix: Fix; onDismiss: (id: string) => void
           >
             {fix.fix_type === 'faq' ? 'FAQ Page' : fix.fix_type.charAt(0).toUpperCase() + fix.fix_type.slice(1)}
           </span>
+          {fix.priority === 'high' && fix.status === 'pending' && (
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+              style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }}
+            >
+              Competitors cited here
+            </span>
+          )}
         </div>
         <p className="font-medium text-white text-[15px] mb-1.5">{fix.title}</p>
         <p
@@ -128,7 +136,11 @@ export function FixesPage() {
     <div className="pb-20 md:pb-0">
       <PageHeader
         title="AI Visibility Fixes"
-        subtitle="AI-generated improvements to get you cited more — review and apply in one click"
+        subtitle={
+          allFixes.filter((f) => f.priority === 'high').length > 0
+            ? `${allFixes.filter((f) => f.priority === 'high').length} critical gap${allFixes.filter((f) => f.priority === 'high').length > 1 ? 's' : ''} — competitors are being cited instead of you`
+            : 'AI-generated improvements to get you cited more — review and apply in one click'
+        }
         action={
           <div className="flex gap-2">
             {(['all', 'high'] as const).map((f) => (

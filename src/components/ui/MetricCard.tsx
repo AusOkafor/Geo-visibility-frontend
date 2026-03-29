@@ -6,6 +6,7 @@ interface MetricCardProps {
   value: string | number;
   trend?: number;
   suffix?: string;
+  status?: { label: string; color: string };
   className?: string;
 }
 
@@ -28,7 +29,7 @@ function useCountUp(target: number, duration = 800): number {
   return count;
 }
 
-export function MetricCard({ label, value, trend, suffix, className }: MetricCardProps) {
+export function MetricCard({ label, value, trend, suffix, status, className }: MetricCardProps) {
   const numericValue = typeof value === 'number' ? value : parseFloat(String(value));
   const isNumeric = !isNaN(numericValue);
   const animated = useCountUp(isNumeric ? numericValue : 0);
@@ -58,16 +59,23 @@ export function MetricCard({ label, value, trend, suffix, className }: MetricCar
       <p className="text-[28px] font-bold font-mono text-white leading-none">
         {displayValue}
       </p>
-      {trend !== undefined && (
-        <p
-          className={cn(
-            'text-sm mt-2 font-mono',
-            trend > 0 ? 'text-[#00D4FF]' : 'text-rose-400'
-          )}
-        >
-          {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
-        </p>
-      )}
+      <div className="flex items-center justify-between mt-2">
+        {status ? (
+          <p className="text-[11px] font-medium" style={{ color: status.color }}>
+            {status.label}
+          </p>
+        ) : <span />}
+        {trend !== undefined && (
+          <p
+            className={cn(
+              'text-[11px] font-mono',
+              trend > 0 ? 'text-[#00D4FF]' : trend < 0 ? 'text-rose-400' : 'text-[#64748B]'
+            )}
+          >
+            {trend > 0 ? '↑' : trend < 0 ? '↓' : '—'}{trend !== 0 ? ` ${Math.abs(trend)}pts` : ' flat'}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
