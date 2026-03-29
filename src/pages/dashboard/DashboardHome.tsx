@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { X, CheckCircle, Users, ChevronRight, BarChart2, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { X, CheckCircle, Users, ChevronRight, RefreshCw, CheckCircle2 } from 'lucide-react';
 import {
   AreaChart,
   Area,
