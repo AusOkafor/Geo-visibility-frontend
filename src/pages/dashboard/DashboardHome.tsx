@@ -167,6 +167,19 @@ function useScanProgress(active: boolean) {
   return SCAN_STAGES[stageIdx]?.label ?? 'Scanning…';
 }
 
+// ─── mock data shown before first scan ───────────────────────────────────────
+// Gives the chart a meaningful shape instead of an empty box.
+const MOCK_DAILY: DailyScore[] = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date('2026-02-28');
+  d.setDate(d.getDate() + i);
+  return {
+    date: d.toISOString().slice(0, 10),
+    chatgpt: Math.max(0, 5 + Math.round((Math.random() - 0.5) * 8)),
+    perplexity: Math.max(0, 18 + Math.round((Math.random() - 0.5) * 10) + Math.floor(i / 6)),
+    gemini: Math.max(0, 4 + Math.round((Math.random() - 0.5) * 6)),
+  };
+});
+
 // ─── chart tooltip ───────────────────────────────────────────────────────────
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -209,7 +222,8 @@ export function DashboardHome() {
   const chatgpt = scores?.find((s) => s.platform === 'chatgpt');
   const perplexity = scores?.find((s) => s.platform === 'perplexity');
   const gemini = scores?.find((s) => s.platform === 'gemini');
-  const chartData = daily ?? [];
+  const isMockChart = !daily?.length;
+  const chartData: DailyScore[] = daily?.length ? daily : MOCK_DAILY;
   const pendingFixes = fixes ?? [];
   const compList = competitors ?? [];
   const dailyArr = daily ?? [];
@@ -453,35 +467,50 @@ export function DashboardHome() {
         </div>
         {dailyLoading ? (
           <LoadingSkeleton height="260px" />
-        ) : chartData.length === 0 ? (
-          <EmptyState icon={BarChart2} title="Scanning in progress…" description="Chart will appear once your first scan completes." />
         ) : (
-          <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={chartData} margin={{ top: 4, right: 16, left: -24, bottom: 0 }}>
-              <defs>
-                <linearGradient id="cgGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#00D4FF" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#00D4FF" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="pxGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#A78BFA" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#A78BFA" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="gmGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="0" />
-              <XAxis dataKey="date" tickFormatter={(d, i) => (i % 5 === 0 ? formatDate(d) : '')} tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'DM Sans' }} axisLine={false} tickLine={false} />
-              <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'Space Mono' }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ paddingTop: 12, fontSize: 12, fontFamily: 'DM Sans' }} iconType="circle" iconSize={8} />
-              <Area type="monotone" dataKey="chatgpt" name="ChatGPT" stroke="#00D4FF" strokeWidth={2} fill="url(#cgGrad)" dot={false} activeDot={{ r: 4, fill: '#00D4FF' }} />
-              <Area type="monotone" dataKey="perplexity" name="Perplexity" stroke="#A78BFA" strokeWidth={2} fill="url(#pxGrad)" dot={false} activeDot={{ r: 4, fill: '#A78BFA' }} />
-              <Area type="monotone" dataKey="gemini" name="Gemini" stroke="#F59E0B" strokeWidth={2} fill="url(#gmGrad)" dot={false} activeDot={{ r: 4, fill: '#F59E0B' }} />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div className="relative">
+            <ResponsiveContainer width="100%" height={260}>
+              <AreaChart data={chartData} margin={{ top: 4, right: 16, left: -24, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="cgGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#00D4FF" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#00D4FF" stopOpacity={0.03} />
+                  </linearGradient>
+                  <linearGradient id="pxGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#A78BFA" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#A78BFA" stopOpacity={0.03} />
+                  </linearGradient>
+                  <linearGradient id="gmGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.03} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="0" />
+                <XAxis dataKey="date" tickFormatter={(d: string, i: number) => (i % 5 === 0 ? formatDate(d) : '')} tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'DM Sans' }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'Space Mono' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend wrapperStyle={{ paddingTop: 12, fontSize: 12, fontFamily: 'DM Sans' }} iconType="circle" iconSize={8} />
+                <Area type="monotone" dataKey="chatgpt" name="ChatGPT" stroke="#00D4FF" strokeWidth={2} fill="url(#cgGrad)" dot={false} activeDot={{ r: 4, fill: '#00D4FF' }} />
+                <Area type="monotone" dataKey="perplexity" name="Perplexity" stroke="#A78BFA" strokeWidth={2} fill="url(#pxGrad)" dot={false} activeDot={{ r: 4, fill: '#A78BFA' }} />
+                <Area type="monotone" dataKey="gemini" name="Gemini" stroke="#F59E0B" strokeWidth={2} fill="url(#gmGrad)" dot={false} activeDot={{ r: 4, fill: '#F59E0B' }} />
+              </AreaChart>
+            </ResponsiveContainer>
+            {/* Overlay when showing placeholder data */}
+            {isMockChart && (
+              <div
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                style={{ background: 'rgba(10,10,11,0.55)', backdropFilter: 'blur(1px)' }}
+              >
+                <div
+                  className="text-center px-5 py-3 rounded-[8px]"
+                  style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  <p className="text-white text-[13px] font-medium mb-1">No scan data yet</p>
+                  <p className="text-[12px]" style={{ color: '#64748B' }}>Run your first scan to see real visibility trends</p>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
