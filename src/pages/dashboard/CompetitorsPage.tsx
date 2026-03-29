@@ -249,22 +249,18 @@ export function CompetitorsPage() {
                       Platform presence
                     </p>
                     <div className="space-y-2">
-                      {comp.platforms.map(p => (
-                        <div key={p} className="flex items-center gap-2 text-[13px]">
-                          <PlatformBadge platform={p as Platform} />
-                          <span style={{ color: '#64748B' }}>
-                            Position {positionLabel(comp.best_position)}
-                          </span>
-                        </div>
-                      ))}
-                      {(['chatgpt', 'perplexity', 'gemini'] as Platform[])
-                        .filter(p => !comp.platforms.includes(p))
-                        .map(p => (
+                      {(['chatgpt', 'perplexity', 'gemini'] as Platform[]).map(p => {
+                        const pos = comp.platform_positions?.[p];
+                        const cited = comp.platforms.includes(p);
+                        return (
                           <div key={p} className="flex items-center gap-2 text-[13px]">
                             <PlatformBadge platform={p} />
-                            <span style={{ color: '#334155' }}>Not cited</span>
+                            <span style={{ color: cited ? '#64748B' : '#334155' }}>
+                              {cited && pos ? `Position ${positionLabel(pos)}` : cited ? 'Cited' : 'Not cited'}
+                            </span>
                           </div>
-                        ))}
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -274,7 +270,13 @@ export function CompetitorsPage() {
                       Close the gap
                     </p>
                     <p className="text-[13px] mb-3" style={{ color: '#94a3b8' }}>
-                      Expand your product descriptions, add FAQ content, and improve your schema markup to compete with {comp.name}.
+                      {comp.best_position === 1
+                        ? `${comp.name} is consistently the top recommendation. Build authority by expanding your product descriptions and adding structured FAQ content targeting the same buyer queries.`
+                        : comp.best_position === 2
+                        ? `${comp.name} ranks just ahead of you. Strengthen your schema markup and FAQ coverage to close the gap.`
+                        : comp.platforms.length === 3
+                        ? `${comp.name} has cross-platform presence on all 3 AI models. Improve content depth and schema markup to appear alongside them.`
+                        : `${comp.name} appears in more AI responses than you. Adding FAQ content and detailed product descriptions can improve your citation rate.`}
                     </p>
                     <Link
                       to="/dashboard/fixes"
