@@ -1,4 +1,4 @@
-import type { Merchant, VisibilityScore, DailyScore, Competitor, Fix, PlatformSource } from '../types';
+import type { Merchant, VisibilityScore, DailyScore, Competitor, Fix, PlatformSource, QueryGap } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://geo-v-backend.onrender.com/api/v1';
 const API_HOST = import.meta.env.VITE_API_HOST ?? 'https://geo-v-backend.onrender.com';
@@ -46,6 +46,9 @@ export const getCompetitors = (): Promise<Competitor[]> => request('/competitors
 
 export const getPlatformSources = (): Promise<PlatformSource[]> =>
   request('/visibility/sources');
+
+export const getQueryGaps = (): Promise<QueryGap[]> =>
+  request('/visibility/gaps');
 
 export const getFixes = (status?: string): Promise<Fix[]> =>
   request(`/fixes${status ? `?status=${status}` : ''}`);

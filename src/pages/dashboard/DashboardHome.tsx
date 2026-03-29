@@ -25,6 +25,7 @@ import {
   useCompetitors,
   useTriggerScan,
   usePlatformSources,
+  useQueryGaps,
 } from '../../hooks/useApi';
 import { useQueryClient } from '@tanstack/react-query';
 import * as api from '../../lib/api';
@@ -169,6 +170,7 @@ export function DashboardHome() {
   const { data: fixes, isLoading: fixesLoading } = useFixes('pending');
   const { data: competitors, isLoading: compLoading } = useCompetitors();
   const { data: platformSources } = usePlatformSources();
+  const { data: queryGaps, isLoading: gapsLoading } = useQueryGaps();
   const triggerScan = useTriggerScan();
 
   const chatgpt = scores?.find((s) => s.platform === 'chatgpt');
@@ -206,6 +208,7 @@ export function DashboardHome() {
             qc.invalidateQueries({ queryKey: ['competitors'] }),
             qc.invalidateQueries({ queryKey: ['fixes'] }),
             qc.invalidateQueries({ queryKey: ['platform-sources'] }),
+            qc.invalidateQueries({ queryKey: ['query-gaps'] }),
           ]);
           // Hide the "done" banner after 8s
           setTimeout(() => setScanDone(false), 8000);
@@ -488,6 +491,58 @@ export function DashboardHome() {
           )}
         </div>
       </div>
+
+      {/* Query visibility gaps */}
+      {(gapsLoading || (queryGaps && queryGaps.length > 0)) && (
+        <div
+          className="rounded-[6px] p-5 mt-4"
+          style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
+        >
+          <div className="flex items-start gap-3 mb-4">
+            <div className="flex-1">
+              <p className="font-medium text-white text-[15px]">Blind spots — queries where you're invisible</p>
+              <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>
+                These are the exact AI search queries where you were not mentioned on any platform.
+              </p>
+            </div>
+            {queryGaps && queryGaps.length > 0 && (
+              <span
+                className="flex-shrink-0 text-[11px] font-mono px-2 py-0.5 rounded"
+                style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}
+              >
+                {queryGaps.length} gap{queryGaps.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+          {gapsLoading ? (
+            <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <LoadingSkeleton key={i} height="36px" />)}</div>
+          ) : (
+            <div className="space-y-1.5">
+              {queryGaps!.map((gap, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 py-2.5 px-3 rounded-[6px]"
+                  style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)' }}
+                >
+                  <span className="text-[11px] flex-shrink-0" style={{ color: '#EF4444' }}>✕</span>
+                  <span className="flex-1 text-[13px]" style={{ color: '#cbd5e1' }}>{gap.query}</span>
+                  <div className="flex gap-1.5 flex-shrink-0">
+                    {gap.platforms.map((p) => (
+                      <span
+                        key={p}
+                        className="text-[10px] px-1.5 py-0.5 rounded capitalize"
+                        style={{ background: '#1a1a1f', color: '#64748B' }}
+                      >
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

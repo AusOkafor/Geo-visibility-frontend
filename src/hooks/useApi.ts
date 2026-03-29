@@ -22,6 +22,9 @@ export const useCompetitors = () =>
 export const usePlatformSources = () =>
   useQuery({ queryKey: ['platform-sources'], queryFn: api.getPlatformSources });
 
+export const useQueryGaps = () =>
+  useQuery({ queryKey: ['query-gaps'], queryFn: api.getQueryGaps });
+
 export const useFixes = (status?: string) =>
   useQuery({
     queryKey: ['fixes', status],

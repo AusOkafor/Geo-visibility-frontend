@@ -39,6 +39,11 @@ export interface PlatformSource {
   grounded: boolean; // true = real web search; false = model memory / AI prediction
 }
 
+export interface QueryGap {
+  query: string;
+  platforms: string[];
+}
+
 export interface Fix {
   id: string;
   fix_type: 'description' | 'faq' | 'schema' | 'listing';
