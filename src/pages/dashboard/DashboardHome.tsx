@@ -48,16 +48,24 @@ function scoreStatus(score: number): { label: string; color: string } {
   return { label: 'Strong', color: '#00D4FF' };
 }
 
+interface InsightVerdict {
+  type: 'warning' | 'positive' | 'neutral';
+  verdict: string;
+  lines: string[];
+}
+
 function computeInsight(
   scores: VisibilityScore[] | undefined,
   daily: DailyScore[] | undefined,
   competitors: Competitor[] | undefined,
-  pendingFixes: Fix[]
-): { type: 'warning' | 'positive' | 'neutral'; text: string } | null {
+  pendingFixes: Fix[],
+  gapCount: number
+): InsightVerdict | null {
   if (!scores || scores.length === 0) return null;
   const avg = Math.round(scores.reduce((s, x) => s + x.score, 0) / scores.length);
   const topComp = competitors?.[0];
   const highFixes = pendingFixes.filter((f) => f.priority === 'high').length;
+  const topNames = competitors?.slice(0, 2).map((c) => c.name).join(' and ') ?? '';
 
   let weekDelta: number | undefined;
   if (daily && daily.length >= 2) {
@@ -68,38 +76,63 @@ function computeInsight(
     );
   }
 
+  // Competitor multiplier
+  let multiplierLine = '';
+  if (topComp && topComp.total_scans > 0 && avg > 0) {
+    const compPct = Math.round((topComp.total_frequency / topComp.total_scans) * 100);
+    const mult = (compPct / avg).toFixed(1);
+    if (parseFloat(mult) > 1.2) {
+      multiplierLine = `Competitors are cited ${mult}× more than you`;
+    }
+  }
+
+  const gapLine = gapCount > 0 ? `You're invisible in ${gapCount} high-intent quer${gapCount === 1 ? 'y' : 'ies'}` : '';
+  const fixLine = highFixes > 0 ? `Fixing ${highFixes} issue${highFixes > 1 ? 's' : ''} could increase visibility by ~${Math.min(highFixes * 8, 35)}%` : '';
+
   if (weekDelta !== undefined && weekDelta <= -5) {
     return {
       type: 'warning',
-      text: `Visibility dropped ${Math.abs(weekDelta)} points this week${topComp ? ` — ${topComp.name} is gaining ground` : ''}. Check your competitors tab.`,
+      verdict: 'Visibility is dropping — act now',
+      lines: [
+        `Down ${Math.abs(weekDelta)} points this week${topNames ? ` — ${topNames} are gaining ground` : ''}`,
+        multiplierLine,
+        fixLine,
+      ].filter(Boolean),
     };
   }
+
   if (avg < 20) {
-    if (topComp && topComp.total_scans > 0) {
-      const compPct = Math.round((topComp.total_frequency / topComp.total_scans) * 100);
-      return {
-        type: 'warning',
-        text: `${topComp.name} appears in ${compPct}% of AI responses — you're at ${avg}%. ${
-          highFixes > 0 ? `Apply your ${highFixes} high-priority fix${highFixes > 1 ? 'es' : ''} to close the gap.` : 'Run a scan to generate improvement suggestions.'
-        }`,
-      };
-    }
     return {
       type: 'warning',
-      text: `Average visibility is ${avg}% — AI models aren't citing you reliably yet. ${highFixes > 0 ? 'Apply pending fixes to improve.' : ''}`,
+      verdict: "You're losing visibility in AI search",
+      lines: [
+        topNames ? `${topNames} are being recommended instead of you` : 'Competitors are consistently cited over you',
+        multiplierLine,
+        gapLine,
+        fixLine,
+      ].filter(Boolean),
     };
   }
+
   if (weekDelta !== undefined && weekDelta >= 5) {
     return {
       type: 'positive',
-      text: `Up ${weekDelta} points this week — your recent changes are working. Keep applying fixes to maintain momentum.`,
+      verdict: `Visibility up ${weekDelta} points — keep the momentum`,
+      lines: [
+        'Your recent changes are working across AI platforms',
+        fixLine || 'Continue applying fixes to maintain your edge',
+      ].filter(Boolean),
     };
   }
+
   return {
     type: 'neutral',
-    text: `Holding at ${avg}% average${topComp ? ` — ${topComp.name} still outranks you` : ''}. ${
-      highFixes > 0 ? `${highFixes} fix${highFixes > 1 ? 'es' : ''} ready to apply.` : "You're well-optimized across all platforms."
-    }`,
+    verdict: avg >= 50 ? 'Solid presence — room to grow' : 'Moderate visibility — competitors have the edge',
+    lines: [
+      topComp ? `${topComp.name} still outranks you in most queries` : '',
+      multiplierLine,
+      fixLine || "You're holding steady — run a scan to find new opportunities",
+    ].filter(Boolean),
   };
 }
 
@@ -183,7 +216,25 @@ export function DashboardHome() {
   const cgDelta = getPlatformDelta(dailyArr, 'chatgpt');
   const pxDelta = getPlatformDelta(dailyArr, 'perplexity');
   const gmDelta = getPlatformDelta(dailyArr, 'gemini');
-  const insight = computeInsight(scores, daily, competitors, pendingFixes);
+  const gapList = queryGaps ?? [];
+  const insight = computeInsight(scores, daily, competitors, pendingFixes, gapList.length);
+
+  // Per-platform sub-labels for metric cards
+  const platformSubLabel = (score: number | undefined, platformName: string): string | undefined => {
+    if (score === undefined) return undefined;
+    if (score === 0) return `Not being recommended on ${platformName}`;
+    const topComp = compList[0];
+    if (score < 20 && topComp && topComp.total_scans > 0) {
+      const compPct = Math.round((topComp.total_frequency / topComp.total_scans) * 100);
+      if (compPct > score * 1.5) {
+        const mult = (compPct / Math.max(score, 1)).toFixed(1);
+        return `Competitors cited ${mult}× more often`;
+      }
+    }
+    if (score < 40) return 'Weak presence — apply fixes to improve';
+    if (score >= 75) return 'Strong AI presence';
+    return undefined;
+  };
 
   const sourceTag = (platform: string): 'web' | 'simulated' | undefined => {
     if (!platformSources || platformSources.length === 0) return undefined;
@@ -327,10 +378,10 @@ export function DashboardHome() {
         </div>
       )}
 
-      {/* Insight banner */}
+      {/* Insight verdict banner */}
       {insight && !scoresLoading && !scanActive && (
         <div
-          className="flex items-start gap-3 rounded-[6px] px-4 py-3 mb-6"
+          className="rounded-[6px] px-4 py-4 mb-6"
           style={{
             background: insight.type === 'warning' ? 'rgba(239,68,68,0.06)' : insight.type === 'positive' ? 'rgba(0,212,255,0.06)' : '#111113',
             border: `1px solid ${insight.type === 'warning' ? 'rgba(239,68,68,0.2)' : insight.type === 'positive' ? 'rgba(0,212,255,0.2)' : 'rgba(255,255,255,0.06)'}`,
@@ -338,10 +389,18 @@ export function DashboardHome() {
             borderLeftColor: insight.type === 'warning' ? '#EF4444' : insight.type === 'positive' ? '#00D4FF' : '#334155',
           }}
         >
-          <span className="text-[18px] leading-none mt-0.5 flex-shrink-0">
-            {insight.type === 'warning' ? '⚠' : insight.type === 'positive' ? '↑' : '·'}
-          </span>
-          <p className="text-[13px] leading-relaxed" style={{ color: '#94a3b8' }}>{insight.text}</p>
+          <p className="text-[14px] font-semibold text-white mb-2">
+            {insight.type === 'warning' ? '❌ ' : insight.type === 'positive' ? '↑ ' : '· '}
+            {insight.verdict}
+          </p>
+          <ul className="space-y-1">
+            {insight.lines.map((line, i) => (
+              <li key={i} className="text-[12px] flex items-start gap-2" style={{ color: '#94a3b8' }}>
+                <span className="mt-0.5 flex-shrink-0" style={{ color: insight.type === 'warning' ? '#EF4444' : insight.type === 'positive' ? '#00D4FF' : '#334155' }}>→</span>
+                {line}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -356,9 +415,9 @@ export function DashboardHome() {
           ))
         ) : (
           <>
-            <MetricCard label="ChatGPT Visibility" value={chatgpt?.score ?? 0} suffix="%" trend={cgDelta} status={chatgpt ? scoreStatus(chatgpt.score) : undefined} sourceTag={sourceTag('chatgpt')} />
-            <MetricCard label="Perplexity Visibility" value={perplexity?.score ?? 0} suffix="%" trend={pxDelta} status={perplexity ? scoreStatus(perplexity.score) : undefined} sourceTag={sourceTag('perplexity')} />
-            <MetricCard label="Gemini Visibility" value={gemini?.score ?? 0} suffix="%" trend={gmDelta} status={gemini ? scoreStatus(gemini.score) : undefined} sourceTag={sourceTag('gemini')} />
+            <MetricCard label="ChatGPT Visibility" value={chatgpt?.score ?? 0} suffix="%" trend={cgDelta} status={chatgpt ? scoreStatus(chatgpt.score) : undefined} subLabel={platformSubLabel(chatgpt?.score, 'ChatGPT')} sourceTag={sourceTag('chatgpt')} />
+            <MetricCard label="Perplexity Visibility" value={perplexity?.score ?? 0} suffix="%" trend={pxDelta} status={perplexity ? scoreStatus(perplexity.score) : undefined} subLabel={platformSubLabel(perplexity?.score, 'Perplexity')} sourceTag={sourceTag('perplexity')} />
+            <MetricCard label="Gemini Visibility" value={gemini?.score ?? 0} suffix="%" trend={gmDelta} status={gemini ? scoreStatus(gemini.score) : undefined} subLabel={platformSubLabel(gemini?.score, 'Gemini')} sourceTag={sourceTag('gemini')} />
             <MetricCard
               label="Pending Fixes"
               value={pendingFixes.length}
@@ -368,6 +427,13 @@ export function DashboardHome() {
                   : pendingFixes.filter((f) => f.priority === 'high').length > 0
                   ? { label: `${pendingFixes.filter((f) => f.priority === 'high').length} high priority`, color: '#EF4444' }
                   : { label: 'Ready to apply', color: '#F59E0B' }
+              }
+              subLabel={
+                pendingFixes.filter((f) => f.priority === 'high').length > 0
+                  ? 'Blocking visibility — apply now'
+                  : pendingFixes.length > 0
+                  ? 'Apply to improve AI citations'
+                  : undefined
               }
             />
           </>
@@ -441,17 +507,34 @@ export function DashboardHome() {
           ) : pendingFixes.length === 0 ? (
             <EmptyState icon={CheckCircle} title="All caught up" description="No pending fixes. Your store is well-optimized." />
           ) : (
-            <div className="space-y-2">
-              {pendingFixes.slice(0, 3).map((fix) => (
-                <Link key={fix.id} to={`/dashboard/fixes/${fix.id}`} className="flex items-center gap-3 py-2.5 px-3 rounded-[6px] hover:bg-white/[0.02] transition-colors">
-                  <PriorityDot priority={fix.priority} />
-                  <span className="flex-1 text-[13px] text-white font-medium truncate">{fix.title}</span>
-                  <span className="text-[11px] px-2 py-0.5 rounded" style={{ background: '#1a1a1f', color: '#64748B' }}>{fix.fix_type}</span>
-                  <span className="font-mono text-[13px] ml-2" style={{ color: '#00D4FF' }}>+{fix.est_impact}%</span>
-                  <ChevronRight size={14} style={{ color: '#64748B' }} />
-                </Link>
-              ))}
-            </div>
+            <>
+              <div className="space-y-2">
+                {pendingFixes.slice(0, 3).map((fix) => (
+                  <Link key={fix.id} to={`/dashboard/fixes/${fix.id}`} className="flex items-start gap-3 py-2.5 px-3 rounded-[6px] hover:bg-white/[0.02] transition-colors">
+                    <PriorityDot priority={fix.priority} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] text-white font-medium truncate">{fix.title}</p>
+                      {fix.explanation && (
+                        <p className="text-[11px] mt-0.5 line-clamp-1" style={{ color: '#64748B' }}>{fix.explanation}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+                      <span className="text-[11px] px-2 py-0.5 rounded" style={{ background: '#1a1a1f', color: '#64748B' }}>{fix.fix_type}</span>
+                      <span className="font-mono text-[12px]" style={{ color: '#00D4FF' }}>+{fix.est_impact}%</span>
+                      <ChevronRight size={14} style={{ color: '#64748B' }} />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              {/* Dominant CTA */}
+              <Link
+                to="/dashboard/fixes"
+                className="flex items-center justify-center gap-2 w-full mt-4 py-2.5 rounded-[6px] text-[13px] font-semibold transition-all hover:opacity-90"
+                style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: '#EF4444' }}
+              >
+                🔥 Fix My Visibility ({pendingFixes.filter(f => f.priority === 'high').length} high-impact actions)
+              </Link>
+            </>
           )}
         </div>
 
@@ -472,15 +555,22 @@ export function DashboardHome() {
           ) : compList.length === 0 ? (
             <EmptyState icon={Users} title="Scanning for competitors" description="We'll detect who's beating you in AI results." />
           ) : (
-            <div className="space-y-2">
-              {compList.slice(0, 5).map((comp, i) => {
+            <div className="space-y-3">
+              {compList.slice(0, 4).map((comp, i) => {
                 const citePct = comp.total_scans > 0 ? Math.round((comp.total_frequency / comp.total_scans) * 100) : 0;
+                // why_points[1] is the position insight (most useful for "why winning")
+                const whyLine = comp.why_points?.[1] ?? comp.why_points?.[0];
                 return (
-                  <div key={i} className="flex items-center gap-3 py-1.5">
-                    <span className="w-4 text-[11px] font-mono text-right flex-shrink-0" style={{ color: '#334155' }}>#{i + 1}</span>
-                    <span className="flex-1 text-[13px] text-white">{comp.name}</span>
-                    {comp.platforms[0] && <PlatformBadge platform={comp.platforms[0] as any} />}
-                    <span className="text-[11px] font-mono flex-shrink-0" style={{ color: '#64748B' }}>{citePct}%</span>
+                  <div key={i} className="py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                    <div className="flex items-center gap-3">
+                      <span className="w-4 text-[11px] font-mono text-right flex-shrink-0" style={{ color: '#334155' }}>#{i + 1}</span>
+                      <span className="flex-1 text-[13px] text-white font-medium">{comp.name}</span>
+                      {comp.platforms[0] && <PlatformBadge platform={comp.platforms[0] as any} />}
+                      <span className="text-[11px] font-mono flex-shrink-0" style={{ color: '#EF4444' }}>{citePct}%</span>
+                    </div>
+                    {whyLine && (
+                      <p className="text-[11px] ml-7 mt-0.5" style={{ color: '#64748B' }}>{whyLine}</p>
+                    )}
                   </div>
                 );
               })}
@@ -498,11 +588,11 @@ export function DashboardHome() {
           className="rounded-[6px] p-5 mt-4"
           style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
         >
-          <div className="flex items-start gap-3 mb-4">
+          <div className="flex items-start gap-3 mb-2">
             <div className="flex-1">
               <p className="font-medium text-white text-[15px]">Blind spots — queries where you're invisible</p>
               <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>
-                These are the exact AI search queries where you were not mentioned on any platform.
+                Exact AI search queries where you were not mentioned on any platform.
               </p>
             </div>
             {queryGaps && queryGaps.length > 0 && (
@@ -514,33 +604,64 @@ export function DashboardHome() {
               </span>
             )}
           </div>
+
+          {/* Impact estimate */}
+          {!gapsLoading && queryGaps && queryGaps.length > 0 && (
+            <p className="text-[12px] mb-4 px-3 py-2 rounded-[4px]" style={{ background: 'rgba(239,68,68,0.06)', color: '#fca5a5' }}>
+              Fixing top {Math.min(5, queryGaps.length)} blind spots could increase visibility by ~{Math.min(5, queryGaps.length) * 4}%
+            </p>
+          )}
+
           {gapsLoading ? (
             <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <LoadingSkeleton key={i} height="36px" />)}</div>
-          ) : (
-            <div className="space-y-1.5">
-              {queryGaps!.map((gap, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 py-2.5 px-3 rounded-[6px]"
-                  style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)' }}
-                >
-                  <span className="text-[11px] flex-shrink-0" style={{ color: '#EF4444' }}>✕</span>
-                  <span className="flex-1 text-[13px]" style={{ color: '#cbd5e1' }}>{gap.query}</span>
-                  <div className="flex gap-1.5 flex-shrink-0">
-                    {gap.platforms.map((p) => (
-                      <span
-                        key={p}
-                        className="text-[10px] px-1.5 py-0.5 rounded capitalize"
-                        style={{ background: '#1a1a1f', color: '#64748B' }}
+          ) : (() => {
+            const highValue = gapList.slice(0, 5);
+            const secondary = gapList.slice(5);
+            return (
+              <div className="space-y-4">
+                {/* High-value */}
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest mb-2 flex items-center gap-1.5" style={{ color: '#EF4444' }}>
+                    🔴 High-value missed queries — fix these first
+                  </p>
+                  <div className="space-y-1.5">
+                    {highValue.map((gap, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 py-2 px-3 rounded-[6px]"
+                        style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)' }}
                       >
-                        {p}
-                      </span>
+                        <span className="text-[11px] flex-shrink-0" style={{ color: '#EF4444' }}>✕</span>
+                        <span className="flex-1 text-[13px]" style={{ color: '#cbd5e1' }}>{gap.query}</span>
+                        <div className="flex gap-1 flex-shrink-0">
+                          {gap.platforms.map((p) => (
+                            <span key={p} className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: '#1a1a1f', color: '#64748B' }}>{p}</span>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+
+                {/* Secondary */}
+                {secondary.length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: '#64748B' }}>
+                      ⚪ Secondary opportunities ({secondary.length})
+                    </p>
+                    <div className="space-y-1">
+                      {secondary.map((gap, i) => (
+                        <div key={i} className="flex items-center gap-3 py-1.5 px-3 rounded-[6px]" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                          <span className="text-[11px] flex-shrink-0" style={{ color: '#334155' }}>–</span>
+                          <span className="flex-1 text-[12px]" style={{ color: '#64748B' }}>{gap.query}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

@@ -7,6 +7,7 @@ interface MetricCardProps {
   trend?: number;
   suffix?: string;
   status?: { label: string; color: string };
+  subLabel?: string; // second line below value for context/urgency
   sourceTag?: 'web' | 'simulated'; // grounding transparency badge
   className?: string;
 }
@@ -30,7 +31,7 @@ function useCountUp(target: number, duration = 800): number {
   return count;
 }
 
-export function MetricCard({ label, value, trend, suffix, status, sourceTag, className }: MetricCardProps) {
+export function MetricCard({ label, value, trend, suffix, status, subLabel, sourceTag, className }: MetricCardProps) {
   const numericValue = typeof value === 'number' ? value : parseFloat(String(value));
   const isNumeric = !isNaN(numericValue);
   const animated = useCountUp(isNumeric ? numericValue : 0);
@@ -71,6 +72,11 @@ export function MetricCard({ label, value, trend, suffix, status, sourceTag, cla
       <p className="text-[28px] font-bold font-mono text-white leading-none">
         {displayValue}
       </p>
+      {subLabel && (
+        <p className="text-[11px] mt-1 leading-tight" style={{ color: '#94a3b8' }}>
+          {subLabel}
+        </p>
+      )}
       <div className="flex items-center justify-between mt-2">
         {status ? (
           <p className="text-[11px] font-medium" style={{ color: status.color }}>
