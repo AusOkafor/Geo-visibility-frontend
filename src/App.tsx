@@ -1,6 +1,8 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LandingPage } from './pages/LandingPage';
+import { LoginPage } from './pages/LoginPage';
+import { SignupPage } from './pages/SignupPage';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { AppShell } from './components/AppShell';
 import { DashboardHome } from './pages/dashboard/DashboardHome';
@@ -20,18 +22,27 @@ const queryClient = new QueryClient({
   },
 });
 
+// Redirects to /login if no session token is present.
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const token = localStorage.getItem('geo_session_token');
+  if (!token) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
 function DashboardLayout() {
   return (
-    <AppShell>
-      <Routes>
-        <Route index element={<DashboardHome />} />
-        <Route path="visibility" element={<VisibilityPage />} />
-        <Route path="competitors" element={<CompetitorsPage />} />
-        <Route path="fixes" element={<FixesPage />} />
-        <Route path="fixes/:id" element={<FixDetailPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-      </Routes>
-    </AppShell>
+    <ProtectedRoute>
+      <AppShell>
+        <Routes>
+          <Route index element={<DashboardHome />} />
+          <Route path="visibility" element={<VisibilityPage />} />
+          <Route path="competitors" element={<CompetitorsPage />} />
+          <Route path="fixes" element={<FixesPage />} />
+          <Route path="fixes/:id" element={<FixDetailPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+        </Routes>
+      </AppShell>
+    </ProtectedRoute>
   );
 }
 
@@ -41,6 +52,8 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/dashboard/*" element={<DashboardLayout />} />
         </Routes>
