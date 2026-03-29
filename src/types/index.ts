@@ -39,6 +39,13 @@ export interface PlatformSource {
   grounded: boolean; // true = real web search; false = model memory / AI prediction
 }
 
+export interface BrandRecognition {
+  recognition_rate: number;   // 0.0–1.0
+  mentioned_queries: number;
+  total_queries: number;
+  is_recognized: boolean;
+}
+
 export interface QueryGap {
   query: string;
   platforms: string[];

@@ -25,6 +25,9 @@ export const usePlatformSources = () =>
 export const useQueryGaps = () =>
   useQuery({ queryKey: ['query-gaps'], queryFn: api.getQueryGaps });
 
+export const useBrandRecognition = () =>
+  useQuery({ queryKey: ['brand-recognition'], queryFn: api.getBrandRecognition });
+
 export const useFixes = (status?: string) =>
   useQuery({
     queryKey: ['fixes', status],

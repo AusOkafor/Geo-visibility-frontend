@@ -26,6 +26,7 @@ import {
   useTriggerScan,
   usePlatformSources,
   useQueryGaps,
+  useBrandRecognition,
 } from '../../hooks/useApi';
 import { useQueryClient } from '@tanstack/react-query';
 import * as api from '../../lib/api';
@@ -217,6 +218,7 @@ export function DashboardHome() {
   const { data: competitors, isLoading: compLoading } = useCompetitors();
   const { data: platformSources } = usePlatformSources();
   const { data: queryGaps, isLoading: gapsLoading } = useQueryGaps();
+  const { data: brandRecognition } = useBrandRecognition();
   const triggerScan = useTriggerScan();
 
   const chatgpt = scores?.find((s) => s.platform === 'chatgpt');
@@ -274,6 +276,7 @@ export function DashboardHome() {
             qc.invalidateQueries({ queryKey: ['fixes'] }),
             qc.invalidateQueries({ queryKey: ['platform-sources'] }),
             qc.invalidateQueries({ queryKey: ['query-gaps'] }),
+            qc.invalidateQueries({ queryKey: ['brand-recognition'] }),
           ]);
           // Hide the "done" banner after 8s
           setTimeout(() => setScanDone(false), 8000);
@@ -415,6 +418,35 @@ export function DashboardHome() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Brand not recognized warning */}
+      {brandRecognition && brandRecognition.total_queries > 0 && !brandRecognition.is_recognized && !scanActive && (
+        <div
+          className="rounded-[6px] px-4 py-4 mb-4"
+          style={{
+            background: 'rgba(239,68,68,0.07)',
+            border: '1px solid rgba(239,68,68,0.3)',
+            borderLeftWidth: 3,
+            borderLeftColor: '#EF4444',
+          }}
+        >
+          <p className="text-[14px] font-semibold text-white mb-1.5">
+            ❌ Your brand is not recognized by AI models
+          </p>
+          <p className="text-[13px] mb-3" style={{ color: '#94a3b8' }}>
+            AI search engines have no knowledge of your brand. This is the root cause of 0% visibility —
+            it's not just that you're not recommended, you're completely unknown to the model.
+          </p>
+          <div className="flex flex-wrap gap-3 text-[12px]">
+            <span style={{ color: '#64748B' }}>
+              Checked across {brandRecognition.total_queries} queries on web-grounded platforms
+            </span>
+            <Link to="/dashboard/fixes" className="no-underline font-medium" style={{ color: '#EF4444' }}>
+              See fixes to build AI presence →
+            </Link>
+          </div>
         </div>
       )}
 
