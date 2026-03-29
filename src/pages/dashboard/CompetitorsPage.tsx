@@ -7,7 +7,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { PlatformBadge } from '../../components/ui/PlatformBadge';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useCompetitors, useMerchant } from '../../hooks/useApi';
+import { useCompetitors, useMerchant, useBrandRecognition } from '../../hooks/useApi';
 import type { Competitor } from '../../types';
 
 type Platform = 'chatgpt' | 'perplexity' | 'gemini';
@@ -39,6 +39,7 @@ export function CompetitorsPage() {
 
   const { data: competitors, isLoading } = useCompetitors();
   const { data: merchant } = useMerchant();
+  const { data: brandRecognition } = useBrandRecognition();
 
   const list: Competitor[] = competitors ?? [];
   const top = list[0];
@@ -84,13 +85,29 @@ export function CompetitorsPage() {
                 <span className="mx-4" style={{ color: '#334155' }}>|</span>
                 <span className="whitespace-nowrap">
                   <span className="font-mono font-bold text-white">{top.name}</span>{' '}
-                  <span style={{ color: '#64748B' }}>
-                    appears in {topPct}% of AI responses
-                  </span>
+                  <span style={{ color: '#64748B' }}>appears in {topPct}% of AI responses</span>
                 </span>
                 <span className="mx-4" style={{ color: '#334155' }}>|</span>
                 <span className="whitespace-nowrap" style={{ color: '#64748B' }}>
                   You rank below all of them
+                </span>
+              </>
+            )}
+            {brandRecognition && brandRecognition.total_queries > 0 && (
+              <>
+                <span className="mx-4" style={{ color: '#334155' }}>|</span>
+                <span
+                  className="whitespace-nowrap text-[11px] px-2 py-0.5 rounded font-medium uppercase tracking-wider"
+                  style={{
+                    background: brandRecognition.confidence === 'high'
+                      ? 'rgba(0,212,255,0.1)' : brandRecognition.confidence === 'medium'
+                      ? 'rgba(245,158,11,0.1)' : 'rgba(100,116,139,0.15)',
+                    color: brandRecognition.confidence === 'high'
+                      ? '#00D4FF' : brandRecognition.confidence === 'medium'
+                      ? '#F59E0B' : '#64748B',
+                  }}
+                >
+                  {brandRecognition.confidence} confidence
                 </span>
               </>
             )}
@@ -149,8 +166,8 @@ export function CompetitorsPage() {
                     gridTemplateColumns: '2fr 2fr 90px 120px 110px 32px',
                   }}
                 >
-                  {/* Name + rank badge */}
-                  <span className="flex items-center gap-2">
+                  {/* Name + rank/class badges */}
+                  <span className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-white text-[13px]">{comp.name}</span>
                     {i === 0 && (
                       <span
@@ -158,6 +175,14 @@ export function CompetitorsPage() {
                         style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}
                       >
                         #1
+                      </span>
+                    )}
+                    {comp.class === 'retailer' && (
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded"
+                        style={{ background: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }}
+                      >
+                        Retailer
                       </span>
                     )}
                   </span>

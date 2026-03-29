@@ -235,10 +235,19 @@ export function DashboardHome() {
   const gapList = queryGaps ?? [];
   const insight = computeInsight(scores, daily, competitors, pendingFixes, gapList.length);
 
-  // Per-platform sub-labels for metric cards
-  const platformSubLabel = (score: number | undefined, platformName: string): string | undefined => {
+  // Per-platform sub-labels: raw query counts take priority (humans trust counts more than %)
+  const platformSubLabel = (
+    score: number | undefined,
+    platformName: string,
+    queriesHit?: number,
+    queriesRun?: number,
+  ): string | undefined => {
     if (score === undefined) return undefined;
     if (score === 0) return `Not being recommended on ${platformName}`;
+    // Raw count — most useful context when data exists
+    if (queriesHit !== undefined && queriesRun) {
+      return `${queriesHit} of ${queriesRun} queries`;
+    }
     const topComp = compList[0];
     if (score < 20 && topComp && topComp.total_scans > 0) {
       const compPct = Math.round((topComp.total_frequency / topComp.total_scans) * 100);
@@ -421,34 +430,54 @@ export function DashboardHome() {
         </div>
       )}
 
-      {/* Brand not recognized warning */}
-      {brandRecognition && brandRecognition.total_queries > 0 && !brandRecognition.is_recognized && !scanActive && (
-        <div
-          className="rounded-[6px] px-4 py-4 mb-4"
-          style={{
-            background: 'rgba(239,68,68,0.07)',
-            border: '1px solid rgba(239,68,68,0.3)',
-            borderLeftWidth: 3,
-            borderLeftColor: '#EF4444',
-          }}
-        >
-          <p className="text-[14px] font-semibold text-white mb-1.5">
-            ❌ Your brand is not recognized by AI models
-          </p>
-          <p className="text-[13px] mb-3" style={{ color: '#94a3b8' }}>
-            AI search engines have no knowledge of your brand. This is the root cause of 0% visibility —
-            it's not just that you're not recommended, you're completely unknown to the model.
-          </p>
-          <div className="flex flex-wrap gap-3 text-[12px]">
-            <span style={{ color: '#64748B' }}>
-              Checked across {brandRecognition.total_queries} queries on web-grounded platforms
-            </span>
-            <Link to="/dashboard/fixes" className="no-underline font-medium" style={{ color: '#EF4444' }}>
+      {/* Brand recognition tier banner */}
+      {brandRecognition && brandRecognition.total_queries > 0 && brandRecognition.tier !== 'recognized' && !scanActive && (() => {
+        const isNone = brandRecognition.tier === 'not_recognized';
+        const accentColor = isNone ? '#EF4444' : '#F59E0B';
+        const bgColor = isNone ? 'rgba(239,68,68,0.07)' : 'rgba(245,158,11,0.07)';
+        const borderColor = isNone ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)';
+        const icon = isNone ? '❌' : '⚠️';
+        const headline = isNone
+          ? 'Your brand is not recognized by AI models'
+          : 'Weak brand recognition — inconsistent AI presence';
+        return (
+          <div
+            className="rounded-[6px] px-4 py-4 mb-4"
+            style={{ background: bgColor, border: `1px solid ${borderColor}`, borderLeftWidth: 3, borderLeftColor: accentColor }}
+          >
+            <div className="flex items-start justify-between gap-4 mb-2">
+              <p className="text-[14px] font-semibold text-white">
+                {icon} {headline}
+              </p>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded font-medium uppercase tracking-wider"
+                  style={{
+                    background: brandRecognition.confidence === 'high' ? 'rgba(0,212,255,0.1)' : 'rgba(100,116,139,0.15)',
+                    color: brandRecognition.confidence === 'high' ? '#00D4FF' : '#64748B',
+                  }}
+                >
+                  {brandRecognition.confidence} confidence
+                </span>
+                <span className="text-[11px]" style={{ color: '#475569' }}>
+                  {brandRecognition.total_queries} queries checked
+                </span>
+              </div>
+            </div>
+            <ul className="space-y-1 mb-3">
+              {brandRecognition.reasons.map((r, i) => (
+                <li key={i} className="flex items-start gap-2 text-[12px]" style={{ color: '#94a3b8' }}>
+                  <span style={{ color: accentColor, flexShrink: 0 }}>→</span>
+                  {r}
+                </li>
+              ))}
+            </ul>
+            <Link to="/dashboard/fixes" className="no-underline text-[12px] font-medium" style={{ color: accentColor }}>
               See fixes to build AI presence →
             </Link>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Score cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -461,9 +490,9 @@ export function DashboardHome() {
           ))
         ) : (
           <>
-            <MetricCard label="ChatGPT Visibility" value={chatgpt?.score ?? 0} suffix="%" trend={cgDelta} status={chatgpt ? scoreStatus(chatgpt.score) : undefined} subLabel={platformSubLabel(chatgpt?.score, 'ChatGPT')} sourceTag={sourceTag('chatgpt')} />
-            <MetricCard label="Perplexity Visibility" value={perplexity?.score ?? 0} suffix="%" trend={pxDelta} status={perplexity ? scoreStatus(perplexity.score) : undefined} subLabel={platformSubLabel(perplexity?.score, 'Perplexity')} sourceTag={sourceTag('perplexity')} />
-            <MetricCard label="Gemini Visibility" value={gemini?.score ?? 0} suffix="%" trend={gmDelta} status={gemini ? scoreStatus(gemini.score) : undefined} subLabel={platformSubLabel(gemini?.score, 'Gemini')} sourceTag={sourceTag('gemini')} />
+            <MetricCard label="ChatGPT Visibility" value={chatgpt?.score ?? 0} suffix="%" trend={cgDelta} status={chatgpt ? scoreStatus(chatgpt.score) : undefined} subLabel={platformSubLabel(chatgpt?.score, 'ChatGPT', chatgpt?.queries_hit, chatgpt?.queries_run)} sourceTag={sourceTag('chatgpt')} />
+            <MetricCard label="Perplexity Visibility" value={perplexity?.score ?? 0} suffix="%" trend={pxDelta} status={perplexity ? scoreStatus(perplexity.score) : undefined} subLabel={platformSubLabel(perplexity?.score, 'Perplexity', perplexity?.queries_hit, perplexity?.queries_run)} sourceTag={sourceTag('perplexity')} />
+            <MetricCard label="Gemini Visibility" value={gemini?.score ?? 0} suffix="%" trend={gmDelta} status={gemini ? scoreStatus(gemini.score) : undefined} subLabel={platformSubLabel(gemini?.score, 'Gemini', gemini?.queries_hit, gemini?.queries_run)} sourceTag={sourceTag('gemini')} />
             <MetricCard
               label="Pending Fixes"
               value={pendingFixes.length}

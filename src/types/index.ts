@@ -32,6 +32,7 @@ export interface Competitor {
   total_scans: number;
   score: number;
   why_points: string[];
+  class?: 'brand' | 'retailer';
 }
 
 export interface PlatformSource {
@@ -40,10 +41,13 @@ export interface PlatformSource {
 }
 
 export interface BrandRecognition {
-  recognition_rate: number;   // 0.0–1.0
+  recognition_rate: number;
   mentioned_queries: number;
   total_queries: number;
   is_recognized: boolean;
+  tier: 'not_recognized' | 'weak' | 'recognized';
+  reasons: string[];
+  confidence: 'high' | 'medium' | 'low';
 }
 
 export interface QueryGap {
