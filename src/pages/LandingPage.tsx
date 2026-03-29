@@ -87,7 +87,7 @@ function ConnectModal() {
   }, [open, close]);
 
   function handleConnect() {
-    const raw = shop.trim().toLowerCase().replace(/^https?:\/\//, '');
+    const raw = shop.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
     if (!raw) {
       setError('Please enter your Shopify store domain');
       return;
