@@ -7,6 +7,7 @@ interface MetricCardProps {
   trend?: number;
   suffix?: string;
   status?: { label: string; color: string };
+  sourceTag?: 'web' | 'simulated'; // grounding transparency badge
   className?: string;
 }
 
@@ -29,7 +30,7 @@ function useCountUp(target: number, duration = 800): number {
   return count;
 }
 
-export function MetricCard({ label, value, trend, suffix, status, className }: MetricCardProps) {
+export function MetricCard({ label, value, trend, suffix, status, sourceTag, className }: MetricCardProps) {
   const numericValue = typeof value === 'number' ? value : parseFloat(String(value));
   const isNumeric = !isNaN(numericValue);
   const animated = useCountUp(isNumeric ? numericValue : 0);
@@ -50,12 +51,23 @@ export function MetricCard({ label, value, trend, suffix, status, className }: M
         border: '1px solid rgba(255,255,255,0.05)',
       }}
     >
-      <p
-        className="text-[11px] uppercase tracking-widest mb-2"
-        style={{ color: '#64748B' }}
-      >
-        {label}
-      </p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[11px] uppercase tracking-widest" style={{ color: '#64748B' }}>
+          {label}
+        </p>
+        {sourceTag && (
+          <span
+            className="text-[9px] font-medium px-1.5 py-0.5 rounded uppercase tracking-wider"
+            style={
+              sourceTag === 'web'
+                ? { background: 'rgba(0,212,255,0.1)', color: '#00D4FF', border: '1px solid rgba(0,212,255,0.2)' }
+                : { background: 'rgba(100,116,139,0.1)', color: '#64748B', border: '1px solid rgba(100,116,139,0.2)' }
+            }
+          >
+            {sourceTag === 'web' ? '⬤ Web' : '◯ Simulated'}
+          </span>
+        )}
+      </div>
       <p className="text-[28px] font-bold font-mono text-white leading-none">
         {displayValue}
       </p>

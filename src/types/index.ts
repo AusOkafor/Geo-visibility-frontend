@@ -34,6 +34,11 @@ export interface Competitor {
   why_points: string[];
 }
 
+export interface PlatformSource {
+  platform: string;
+  grounded: boolean; // true = real web search; false = model memory / AI prediction
+}
+
 export interface Fix {
   id: string;
   fix_type: 'description' | 'faq' | 'schema' | 'listing';

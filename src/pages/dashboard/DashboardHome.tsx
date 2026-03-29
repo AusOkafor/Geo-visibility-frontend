@@ -17,7 +17,7 @@ import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PlatformBadge } from '../../components/ui/PlatformBadge';
 import { PriorityDot } from '../../components/ui/PriorityDot';
-import { useMerchant, useVisibilityScores, useDailyScores, useFixes, useCompetitors, useTriggerScan } from '../../hooks/useApi';
+import { useMerchant, useVisibilityScores, useDailyScores, useFixes, useCompetitors, useTriggerScan, usePlatformSources } from '../../hooks/useApi';
 import { formatDate } from '../../lib/utils';
 import type { VisibilityScore, DailyScore, Competitor, Fix } from '../../types';
 
@@ -140,7 +140,16 @@ export function DashboardHome() {
   const { data: daily, isLoading: dailyLoading } = useDailyScores(30);
   const { data: fixes, isLoading: fixesLoading } = useFixes('pending');
   const { data: competitors, isLoading: compLoading } = useCompetitors();
+  const { data: platformSources } = usePlatformSources();
   const triggerScan = useTriggerScan();
+
+  // Build a lookup: platform → 'web' | 'simulated'
+  const sourceTag = (platform: string): 'web' | 'simulated' | undefined => {
+    if (!platformSources || platformSources.length === 0) return undefined;
+    const src = platformSources.find((s) => s.platform === platform);
+    if (!src) return undefined;
+    return src.grounded ? 'web' : 'simulated';
+  };
 
   const chatgpt = scores?.find((s) => s.platform === 'chatgpt');
   const perplexity = scores?.find((s) => s.platform === 'perplexity');
@@ -279,6 +288,7 @@ export function DashboardHome() {
               suffix="%"
               trend={cgDelta}
               status={chatgpt ? scoreStatus(chatgpt.score) : undefined}
+              sourceTag={sourceTag('chatgpt')}
             />
             <MetricCard
               label="Perplexity Visibility"
@@ -286,6 +296,7 @@ export function DashboardHome() {
               suffix="%"
               trend={pxDelta}
               status={perplexity ? scoreStatus(perplexity.score) : undefined}
+              sourceTag={sourceTag('perplexity')}
             />
             <MetricCard
               label="Gemini Visibility"
@@ -293,6 +304,7 @@ export function DashboardHome() {
               suffix="%"
               trend={gmDelta}
               status={gemini ? scoreStatus(gemini.score) : undefined}
+              sourceTag={sourceTag('gemini')}
             />
             <MetricCard
               label="Pending Fixes"

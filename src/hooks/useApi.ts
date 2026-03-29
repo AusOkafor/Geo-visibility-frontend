@@ -19,6 +19,9 @@ export const useDailyScores = (days: number) =>
 export const useCompetitors = () =>
   useQuery({ queryKey: ['competitors'], queryFn: api.getCompetitors });
 
+export const usePlatformSources = () =>
+  useQuery({ queryKey: ['platform-sources'], queryFn: api.getPlatformSources });
+
 export const useFixes = (status?: string) =>
   useQuery({
     queryKey: ['fixes', status],
