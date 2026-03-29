@@ -4,7 +4,7 @@ import { ArrowRight, ShoppingBag, BarChart2, Zap, Shield, Check } from 'lucide-r
 import { getOAuthURL } from '../lib/api';
 
 const PERKS = [
-  { icon: <BarChart2 size={15} />, title: 'See exactly where you're invisible', body: 'Real scans on ChatGPT, Perplexity, and Gemini — not estimates.' },
+  { icon: <BarChart2 size={15} />, title: "See exactly where you're invisible", body: 'Real scans on ChatGPT, Perplexity, and Gemini — not estimates.' },
   { icon: <Zap size={15} />, title: 'One-click fixes applied to your store', body: 'AI-generated improvements, reviewed by you, pushed directly to Shopify.' },
   { icon: <Shield size={15} />, title: 'No credit card. 14-day free trial.', body: 'Start monitoring in 60 seconds. Cancel any time.' },
 ];
