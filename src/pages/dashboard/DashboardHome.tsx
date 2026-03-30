@@ -372,14 +372,14 @@ export function DashboardHome() {
               </div>
             </div>
             {!isGood && (
-              <div className="flex items-center gap-3 mt-3">
-                {brandRecognition.reasons.slice(0, 2).map((r, i) => (
-                  <span key={i} className="text-[11px] flex items-center gap-1" style={{ color: '#64748B' }}>
-                    <span style={{ color: accentColor }}>→</span> {r}
-                  </span>
+              <div className="mt-3 space-y-1.5">
+                {brandRecognition.reasons.slice(0, 3).map((r, i) => (
+                  <p key={i} className="text-[12px] flex items-start gap-2" style={{ color: '#94a3b8' }}>
+                    <span className="flex-shrink-0 mt-0.5" style={{ color: accentColor }}>→</span> {r}
+                  </p>
                 ))}
-                <Link to="/dashboard/fixes" className="ml-auto text-[12px] font-semibold flex-shrink-0" style={{ color: accentColor }}>
-                  See fixes →
+                <Link to="/dashboard/fixes" className="inline-block mt-1 text-[12px] font-semibold" style={{ color: accentColor }}>
+                  See fixes to build AI presence →
                 </Link>
               </div>
             )}
