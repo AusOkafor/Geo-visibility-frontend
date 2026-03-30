@@ -64,17 +64,9 @@ export const useRejectFix = () => {
 };
 
 export const useTriggerScan = () => {
-  const qc = useQueryClient();
   return useMutation({
     mutationFn: api.triggerScan,
-    onSuccess: () => {
-      // Refetch visibility + competitors after a short delay so results appear
-      setTimeout(() => {
-        qc.invalidateQueries({ queryKey: ['visibility-scores'] });
-        qc.invalidateQueries({ queryKey: ['daily-scores'] });
-        qc.invalidateQueries({ queryKey: ['competitors'] });
-      }, 8000);
-    },
+    // All data refresh is handled by DashboardHome's polling loop on completion
   });
 };
 

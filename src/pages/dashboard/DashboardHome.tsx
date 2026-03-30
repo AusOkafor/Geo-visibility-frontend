@@ -267,31 +267,48 @@ export function DashboardHome() {
     return src ? (src.grounded ? 'web' : 'simulated') : undefined;
   };
 
-  // Poll River job status while scan is active; refresh all data when done
+  // Poll River job status while scan is active; refresh all data when done.
+  // Max 84 polls × 5 s = 7 minutes failsafe.
+  const pollCountRef = useRef(0);
+  const MAX_POLLS = 84;
+
+  async function refreshAllData() {
+    // Core visibility data — fetch immediately
+    await Promise.all([
+      qc.refetchQueries({ queryKey: ['visibility-scores'] }),
+      qc.refetchQueries({ queryKey: ['daily-scores'] }),
+      qc.refetchQueries({ queryKey: ['competitors'] }),
+      qc.refetchQueries({ queryKey: ['platform-sources'] }),
+      qc.refetchQueries({ queryKey: ['brand-recognition'] }),
+    ]);
+    // Fix-generation job runs ~45 s after the scan job completes — wait before fetching
+    setTimeout(async () => {
+      await qc.refetchQueries({ queryKey: ['fixes'] });
+      await qc.refetchQueries({ queryKey: ['query-gaps'] });
+    }, 50000);
+  }
+
   function startPolling() {
     if (pollRef.current) clearInterval(pollRef.current);
+    pollCountRef.current = 0;
     pollRef.current = setInterval(async () => {
+      pollCountRef.current += 1;
+      const timedOut = pollCountRef.current >= MAX_POLLS;
       try {
         const status = await api.getScanStatus();
-        if (status.state === 'completed' || status.state === 'none') {
+        const finished = status.state === 'completed' || status.state === 'failed';
+        if (finished || timedOut) {
           stopPolling();
           setScanActive(false);
           setScanDone(true);
-          // Refresh all dashboard data
-          await Promise.all([
-            qc.invalidateQueries({ queryKey: ['visibility-scores'] }),
-            qc.invalidateQueries({ queryKey: ['daily-scores'] }),
-            qc.invalidateQueries({ queryKey: ['competitors'] }),
-            qc.invalidateQueries({ queryKey: ['fixes'] }),
-            qc.invalidateQueries({ queryKey: ['platform-sources'] }),
-            qc.invalidateQueries({ queryKey: ['query-gaps'] }),
-            qc.invalidateQueries({ queryKey: ['brand-recognition'] }),
-          ]);
-          // Hide the "done" banner after 8s
+          await refreshAllData();
           setTimeout(() => setScanDone(false), 8000);
         }
       } catch {
-        // ignore transient errors
+        if (timedOut) {
+          stopPolling();
+          setScanActive(false);
+        }
       }
     }, 5000);
   }
