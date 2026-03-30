@@ -224,8 +224,18 @@ export function DashboardHome() {
   const chatgpt = scores?.find((s) => s.platform === 'chatgpt');
   const perplexity = scores?.find((s) => s.platform === 'perplexity');
   const gemini = scores?.find((s) => s.platform === 'gemini');
+  // isMockChart = true only when there is zero real scan data at all
   const isMockChart = !daily?.length;
-  const chartData: DailyScore[] = daily?.length ? daily : MOCK_DAILY;
+  // Blend mock data for past days with real scan data so the chart always
+  // has shape. Once there are 7+ real days, switch to real data only.
+  const chartData: DailyScore[] = (() => {
+    if (!daily?.length) return MOCK_DAILY;
+    if (daily.length >= 7) return daily;
+    // Prepend mock days that come before the first real scan date
+    const firstReal = daily[0].date;
+    const mockPrefix = MOCK_DAILY.filter((d) => d.date < firstReal);
+    return [...mockPrefix, ...daily];
+  })();
   const pendingFixes = fixes ?? [];
   const compList = competitors ?? [];
   const dailyArr = daily ?? [];
