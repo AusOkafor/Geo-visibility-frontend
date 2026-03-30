@@ -345,6 +345,33 @@ export function DashboardHome() {
     setWelcomeDismissed(true);
   }
 
+  // ─── derived values for WHY section ────────────────────────────────────────
+  const topComp = compList[0];
+  const topCompPct = topComp && topComp.total_scans > 0
+    ? Math.round((topComp.total_frequency / topComp.total_scans) * 100)
+    : 0;
+  const avgScore = scores?.length
+    ? Math.round(scores.reduce((s, x) => s + x.score, 0) / scores.length)
+    : 0;
+  const groundedCount = platformSources?.filter(s => s.grounded).length ?? 0;
+
+  const whyReasons: { icon: string; text: string; severity: 'high' | 'mid' | 'low' }[] = [];
+  if (brandRecognition && brandRecognition.tier === 'not_recognized') {
+    whyReasons.push({ icon: '📭', text: 'Your brand name does not appear in any LLM training-aligned web sources', severity: 'high' });
+  }
+  if (topComp && topCompPct > avgScore * 1.5) {
+    whyReasons.push({ icon: '📈', text: `${topComp.name} has ${topComp.why_points?.[0]?.toLowerCase() ?? 'stronger citation frequency'} — built over years of indexed content`, severity: 'high' });
+  }
+  if (groundedCount < 2) {
+    whyReasons.push({ icon: '🔍', text: `Only ${groundedCount} of 3 platforms use live web search — the others rely on training memory where you don't exist yet`, severity: 'mid' });
+  }
+  if (gapList.length >= 10) {
+    whyReasons.push({ icon: '🕳️', text: `You're missing from ${gapList.length} queries competitors answer — no indexed content for AI to surface`, severity: 'high' });
+  }
+  if (whyReasons.length < 3) {
+    whyReasons.push({ icon: '🏛️', text: 'Established brands carry years of press mentions, reviews, and backlinks that AI models weight heavily', severity: 'low' });
+  }
+
   return (
     <div className="pb-20 md:pb-0">
       <PageHeader
@@ -369,145 +396,88 @@ export function DashboardHome() {
         }
       />
 
-      {/* Scan progress banner */}
+      {/* ── Scan banners ─────────────────────────────────────────────────────── */}
       {scanActive && (
-        <div
-          className="flex items-center gap-3 rounded-[6px] px-4 py-3 mb-4"
-          style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.2)' }}
-        >
+        <div className="flex items-center gap-3 rounded-[6px] px-4 py-3 mb-4" style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.2)' }}>
           <RefreshCw size={14} className="animate-spin flex-shrink-0" style={{ color: '#00D4FF' }} />
           <div className="flex-1 min-w-0">
             <p className="text-[13px] text-white font-medium">{scanStageLabel}</p>
-            <p className="text-[11px] mt-0.5" style={{ color: '#64748B' }}>
-              This takes 2–4 minutes. Results will load automatically when done.
-            </p>
+            <p className="text-[11px] mt-0.5" style={{ color: '#64748B' }}>This takes 2–4 minutes. Results load automatically when done.</p>
           </div>
-          {/* Animated progress bar */}
           <div className="w-32 h-1 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
-            <div
-              className="h-1 rounded-full transition-all duration-1000"
-              style={{
-                background: '#00D4FF',
-                width: `${Math.min(95, (SCAN_STAGES.findIndex(s => s.label === scanStageLabel) / (SCAN_STAGES.length - 1)) * 100)}%`,
-              }}
-            />
+            <div className="h-1 rounded-full transition-all duration-1000" style={{ background: '#00D4FF', width: `${Math.min(95, (SCAN_STAGES.findIndex(s => s.label === scanStageLabel) / (SCAN_STAGES.length - 1)) * 100)}%` }} />
           </div>
         </div>
       )}
-
-      {/* Scan complete banner */}
       {scanDone && !scanActive && (
-        <div
-          className="flex items-center gap-3 rounded-[6px] px-4 py-3 mb-4"
-          style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.2)' }}
-        >
+        <div className="flex items-center gap-3 rounded-[6px] px-4 py-3 mb-4" style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.2)' }}>
           <CheckCircle2 size={14} style={{ color: '#00D4FF' }} className="flex-shrink-0" />
-          <p className="text-[13px] text-white flex-1">
-            Scan complete — visibility scores and competitors updated.
-          </p>
-          <button onClick={() => setScanDone(false)}>
-            <X size={14} style={{ color: '#64748B' }} />
-          </button>
+          <p className="text-[13px] text-white flex-1">Scan complete — visibility scores and competitors updated.</p>
+          <button onClick={() => setScanDone(false)}><X size={14} style={{ color: '#64748B' }} /></button>
         </div>
       )}
-
-      {/* Welcome banner */}
       {!welcomeDismissed && !scanActive && !scanDone && (
-        <div
-          className="flex items-start justify-between rounded-[6px] p-4 mb-4"
-          style={{ background: '#111113', border: '1px solid rgba(0,212,255,0.2)', borderLeftWidth: 3, borderLeftColor: '#00D4FF' }}
-        >
+        <div className="flex items-start justify-between rounded-[6px] p-4 mb-4" style={{ background: '#111113', border: '1px solid rgba(0,212,255,0.2)', borderLeftWidth: 3, borderLeftColor: '#00D4FF' }}>
           <div>
-            <p className="font-medium text-white text-[14px] mb-1">
-              Welcome to GeoVisibility, {localStorage.getItem('settings_brand_name') || merchant?.brand_name || 'your store'}
-            </p>
-            <p className="text-[13px]" style={{ color: '#64748B' }}>
-              Run your first scan to see how AI models cite your brand.
-            </p>
+            <p className="font-medium text-white text-[14px] mb-1">Welcome to GeoVisibility, {localStorage.getItem('settings_brand_name') || merchant?.brand_name || 'your store'}</p>
+            <p className="text-[13px]" style={{ color: '#64748B' }}>Run your first scan to see how AI models cite your brand.</p>
           </div>
-          <button onClick={dismissWelcome} className="ml-4 flex-shrink-0">
-            <X size={16} style={{ color: '#64748B' }} />
-          </button>
+          <button onClick={dismissWelcome} className="ml-4 flex-shrink-0"><X size={16} style={{ color: '#64748B' }} /></button>
         </div>
       )}
 
-      {/* Insight verdict banner */}
-      {insight && !scoresLoading && !scanActive && (
-        <div
-          className="rounded-[6px] px-4 py-4 mb-6"
-          style={{
-            background: insight.type === 'warning' ? 'rgba(239,68,68,0.06)' : insight.type === 'positive' ? 'rgba(0,212,255,0.06)' : '#111113',
-            border: `1px solid ${insight.type === 'warning' ? 'rgba(239,68,68,0.2)' : insight.type === 'positive' ? 'rgba(0,212,255,0.2)' : 'rgba(255,255,255,0.06)'}`,
-            borderLeftWidth: 3,
-            borderLeftColor: insight.type === 'warning' ? '#EF4444' : insight.type === 'positive' ? '#00D4FF' : '#334155',
-          }}
-        >
-          <p className="text-[14px] font-semibold text-white mb-2">
-            {insight.type === 'warning' ? '❌ ' : insight.type === 'positive' ? '↑ ' : '· '}
-            {insight.verdict}
-          </p>
-          <ul className="space-y-1">
-            {insight.lines.map((line, i) => (
-              <li key={i} className="text-[12px] flex items-start gap-2" style={{ color: '#94a3b8' }}>
-                <span className="mt-0.5 flex-shrink-0" style={{ color: insight.type === 'warning' ? '#EF4444' : insight.type === 'positive' ? '#00D4FF' : '#334155' }}>→</span>
-                {line}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Brand recognition tier banner */}
-      {brandRecognition && brandRecognition.total_queries > 0 && brandRecognition.tier !== 'recognized' && !scanActive && (() => {
-        const isNone = brandRecognition.tier === 'not_recognized';
-        const accentColor = isNone ? '#EF4444' : '#F59E0B';
-        const bgColor = isNone ? 'rgba(239,68,68,0.07)' : 'rgba(245,158,11,0.07)';
-        const borderColor = isNone ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)';
-        const icon = isNone ? '❌' : '⚠️';
-        const headline = isNone
-          ? 'Your brand is not recognized by AI models'
-          : 'Weak brand recognition — inconsistent AI presence';
+      {/* ── SECTION 1: Recognition status — impossible to miss ────────────────── */}
+      {brandRecognition && brandRecognition.total_queries > 0 && !scanActive && (() => {
+        const tier = brandRecognition.tier;
+        const isNone = tier === 'not_recognized';
+        const isWeak = tier === 'weak';
+        const isGood = tier === 'recognized';
+        const accentColor = isGood ? '#00D4FF' : isWeak ? '#F59E0B' : '#EF4444';
+        const bgColor = isGood ? 'rgba(0,212,255,0.05)' : isWeak ? 'rgba(245,158,11,0.07)' : 'rgba(239,68,68,0.08)';
+        const headline = isGood
+          ? 'Brand recognized across AI platforms'
+          : isWeak
+          ? 'Weak signal — AI has inconsistent awareness of your brand'
+          : 'AI models do not know your brand exists';
+        const subline = isGood
+          ? `Mentioned in ${brandRecognition.mentioned_queries} of ${brandRecognition.total_queries} grounded queries`
+          : isNone
+          ? `Not found in any of ${brandRecognition.total_queries} web-grounded AI search queries — your brand has no footprint AI can cite`
+          : `Mentioned in only ${brandRecognition.mentioned_queries} of ${brandRecognition.total_queries} queries — fragile, unreliable signal`;
         return (
-          <div
-            className="rounded-[6px] px-4 py-4 mb-4"
-            style={{ background: bgColor, border: `1px solid ${borderColor}`, borderLeftWidth: 3, borderLeftColor: accentColor }}
-          >
-            <div className="flex items-start justify-between gap-4 mb-2">
-              <p className="text-[14px] font-semibold text-white">
-                {icon} {headline}
-              </p>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span
-                  className="text-[10px] px-2 py-0.5 rounded font-medium uppercase tracking-wider"
-                  style={{
-                    background: brandRecognition.confidence === 'high' ? 'rgba(0,212,255,0.1)' : 'rgba(100,116,139,0.15)',
-                    color: brandRecognition.confidence === 'high' ? '#00D4FF' : '#64748B',
-                  }}
-                >
+          <div className="rounded-[8px] p-5 mb-5" style={{ background: bgColor, border: `1px solid ${accentColor}33` }}>
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div>
+                <p className="text-[16px] font-bold text-white leading-snug">
+                  {isGood ? '✓' : isWeak ? '⚠' : '✕'}&nbsp; {headline}
+                </p>
+                <p className="text-[13px] mt-1" style={{ color: '#94a3b8' }}>{subline}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+                <span className="text-[10px] px-2 py-0.5 rounded font-semibold uppercase tracking-wider" style={{ background: `${accentColor}18`, color: accentColor }}>
                   {brandRecognition.confidence} confidence
                 </span>
-                <span className="text-[11px]" style={{ color: '#475569' }}>
-                  {brandRecognition.total_queries} queries checked
-                </span>
+                <span className="text-[11px]" style={{ color: '#475569' }}>{brandRecognition.total_queries} queries</span>
               </div>
             </div>
-            <ul className="space-y-1 mb-3">
-              {brandRecognition.reasons.map((r, i) => (
-                <li key={i} className="flex items-start gap-2 text-[12px]" style={{ color: '#94a3b8' }}>
-                  <span style={{ color: accentColor, flexShrink: 0 }}>→</span>
-                  {r}
-                </li>
-              ))}
-            </ul>
-            <Link to="/dashboard/fixes" className="no-underline text-[12px] font-medium" style={{ color: accentColor }}>
-              See fixes to build AI presence →
-            </Link>
+            {!isGood && (
+              <div className="flex items-center gap-3 mt-3">
+                {brandRecognition.reasons.slice(0, 2).map((r, i) => (
+                  <span key={i} className="text-[11px] flex items-center gap-1" style={{ color: '#64748B' }}>
+                    <span style={{ color: accentColor }}>→</span> {r}
+                  </span>
+                ))}
+                <Link to="/dashboard/fixes" className="ml-auto text-[12px] font-semibold flex-shrink-0" style={{ color: accentColor }}>
+                  See fixes →
+                </Link>
+              </div>
+            )}
           </div>
         );
       })()}
 
-      {/* Score cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      {/* ── SECTION 2: Platform scores ───────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
         {scoresLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="rounded-[6px] p-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -523,41 +493,146 @@ export function DashboardHome() {
             <MetricCard
               label="Pending Fixes"
               value={pendingFixes.length}
-              status={
-                pendingFixes.length === 0
-                  ? { label: 'All caught up', color: '#00D4FF' }
-                  : pendingFixes.filter((f) => f.priority === 'high').length > 0
-                  ? { label: `${pendingFixes.filter((f) => f.priority === 'high').length} high priority`, color: '#EF4444' }
-                  : { label: 'Ready to apply', color: '#F59E0B' }
-              }
-              subLabel={
-                pendingFixes.filter((f) => f.priority === 'high').length > 0
-                  ? 'Blocking visibility — apply now'
-                  : pendingFixes.length > 0
-                  ? 'Apply to improve AI citations'
-                  : undefined
-              }
+              status={pendingFixes.length === 0 ? { label: 'All caught up', color: '#00D4FF' } : pendingFixes.filter(f => f.priority === 'high').length > 0 ? { label: `${pendingFixes.filter(f => f.priority === 'high').length} high priority`, color: '#EF4444' } : { label: 'Ready to apply', color: '#F59E0B' }}
+              subLabel={pendingFixes.filter(f => f.priority === 'high').length > 0 ? 'Blocking visibility — apply now' : pendingFixes.length > 0 ? 'Apply to improve citations' : undefined}
             />
           </>
         )}
       </div>
 
-      {/* Trend chart — AreaChart for more visual weight */}
-      <div
-        className="rounded-[6px] p-5 mb-6"
-        style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
-      >
+      {/* ── SECTION 3: Why AI models choose others ───────────────────────────── */}
+      {whyReasons.length > 0 && scores && scores.length > 0 && !scanActive && (
+        <div className="rounded-[8px] p-5 mb-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <p className="text-[14px] font-semibold text-white mb-1">Why AI models choose competitors over you</p>
+          <p className="text-[12px] mb-4" style={{ color: '#64748B' }}>These are the structural gaps — not opinions — based on your scan data</p>
+          <div className="space-y-3">
+            {whyReasons.slice(0, 4).map((r, i) => (
+              <div key={i} className="flex items-start gap-3 py-2.5 px-3 rounded-[6px]" style={{ background: r.severity === 'high' ? 'rgba(239,68,68,0.04)' : 'rgba(255,255,255,0.02)', border: `1px solid ${r.severity === 'high' ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.04)'}` }}>
+                <span className="text-[16px] leading-none flex-shrink-0 mt-0.5">{r.icon}</span>
+                <p className="text-[13px]" style={{ color: r.severity === 'high' ? '#fca5a5' : '#94a3b8' }}>{r.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── SECTION 4: Fixes + Competitors ───────────────────────────────────── */}
+      <div className="flex flex-col md:flex-row gap-4 mb-5">
+        {/* Fixes */}
+        <div className="rounded-[8px] p-5 flex-[58]" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="font-semibold text-white text-[15px]">What to fix right now</p>
+              {pendingFixes.length > 0 && (
+                <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>
+                  {pendingFixes.filter(f => f.priority === 'high').length} action{pendingFixes.filter(f => f.priority === 'high').length !== 1 ? 's' : ''} blocking your AI visibility
+                </p>
+              )}
+            </div>
+            <Link to="/dashboard/fixes" className="text-[13px]" style={{ color: '#00D4FF' }}>View all →</Link>
+          </div>
+          {fixesLoading ? (
+            <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <LoadingSkeleton key={i} height="56px" />)}</div>
+          ) : pendingFixes.length === 0 ? (
+            <EmptyState icon={CheckCircle} title="All caught up" description="No pending fixes. Run a scan to find new opportunities." />
+          ) : (
+            <>
+              <div className="space-y-2">
+                {pendingFixes.slice(0, 3).map((fix) => (
+                  <Link key={fix.id} to={`/dashboard/fixes/${fix.id}`} className="flex items-start gap-3 py-3 px-3 rounded-[6px] hover:bg-white/[0.02] transition-colors" style={{ border: '1px solid rgba(255,255,255,0.04)' }}>
+                    <PriorityDot priority={fix.priority} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] text-white font-medium">{fix.title}</p>
+                      <p className="text-[11px] mt-1 line-clamp-2" style={{ color: '#64748B' }}>{fix.explanation}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <span className="font-mono text-[12px] font-bold" style={{ color: '#00D4FF' }}>+{fix.est_impact}%</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: '#1a1a1f', color: '#64748B' }}>{fix.fix_type}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              <Link
+                to="/dashboard/fixes"
+                className="flex items-center justify-center gap-2 w-full mt-4 py-3 rounded-[6px] text-[13px] font-bold transition-all hover:opacity-90"
+                style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: '#EF4444' }}
+              >
+                Fix My Visibility — {pendingFixes.filter(f => f.priority === 'high').length} high-impact action{pendingFixes.filter(f => f.priority === 'high').length !== 1 ? 's' : ''}
+              </Link>
+            </>
+          )}
+        </div>
+
+        {/* Competitors — tiered */}
+        <div className="rounded-[8px] p-5 flex-[42]" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="mb-4">
+            <p className="font-semibold text-white text-[15px]">Who's winning your citations</p>
+            {compList.length > 0 && (
+              <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>
+                Ranked by how often AI recommends them instead of you
+              </p>
+            )}
+          </div>
+          {compLoading ? (
+            <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <LoadingSkeleton key={i} height="44px" />)}</div>
+          ) : compList.length === 0 ? (
+            <EmptyState icon={Users} title="No competitors detected" description="Run a scan to see who's outranking you in AI results." />
+          ) : (() => {
+            const tier1 = compList.filter(c => c.tier === 1);
+            const tier2 = compList.filter(c => (c.tier ?? 2) === 2);
+            const renderComp = (comp: typeof compList[0], i: number, dimmed = false) => {
+              const citePct = comp.total_scans > 0 ? Math.round((comp.total_frequency / comp.total_scans) * 100) : 0;
+              return (
+                <div key={i} className="py-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <div className="flex items-center gap-2">
+                    <span className="w-4 text-[11px] font-mono text-right flex-shrink-0" style={{ color: '#334155' }}>#{i + 1}</span>
+                    <span className="flex-1 text-[13px] font-medium" style={{ color: dimmed ? '#475569' : '#e2e8f0' }}>{comp.name}</span>
+                    {comp.class === 'retailer' && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-semibold" style={{ background: 'rgba(245,158,11,0.1)', color: '#F59E0B' }}>Retailer</span>
+                    )}
+                    {comp.platforms[0] && <PlatformBadge platform={comp.platforms[0] as any} />}
+                    <span className="text-[11px] font-mono font-bold flex-shrink-0" style={{ color: dimmed ? '#334155' : '#EF4444' }}>{citePct}%</span>
+                  </div>
+                  <p className="text-[11px] ml-6 mt-0.5 line-clamp-1" style={{ color: '#475569' }}>
+                    {comp.why_points?.[0]}
+                  </p>
+                </div>
+              );
+            };
+            return (
+              <div>
+                {tier1.length > 0 && (
+                  <>
+                    <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: '#64748B' }}>High confidence</p>
+                    {tier1.slice(0, 3).map((c, i) => renderComp(c, i))}
+                  </>
+                )}
+                {tier2.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-[10px] uppercase tracking-widest mb-2 mt-1" style={{ color: '#334155' }}>Also cited</p>
+                    {tier2.slice(0, 2).map((c, i) => renderComp(c, tier1.length + i, true))}
+                  </div>
+                )}
+                <Link to="/dashboard/competitors" className="block text-[12px] mt-3 pt-2 transition-colors hover:opacity-80" style={{ color: '#00D4FF', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                  See full breakdown →
+                </Link>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
+      {/* ── SECTION 5: Visibility trend (raw breakdown) ───────────────────────── */}
+      <div className="rounded-[8px] p-5 mb-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
         <div className="mb-4">
           <p className="font-medium text-white text-[15px]">Visibility trend</p>
-          <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>
-            How often AI cites you vs competitors — last 30 days
-          </p>
+          <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>Citation rate per platform — last 30 days</p>
         </div>
         {dailyLoading ? (
-          <LoadingSkeleton height="260px" />
+          <LoadingSkeleton height="220px" />
         ) : (
           <div className="relative">
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={chartData} margin={{ top: 4, right: 16, left: -24, bottom: 0 }}>
                 <defs>
                   <linearGradient id="cgGrad" x1="0" y1="0" x2="0" y2="1">
@@ -574,25 +649,18 @@ export function DashboardHome() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="0" />
-                <XAxis dataKey="date" tickFormatter={(d: string, i: number) => (i % 5 === 0 ? formatDate(d) : '')} tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'DM Sans' }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'Space Mono' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="date" tickFormatter={(d: string, i: number) => (i % 5 === 0 ? formatDate(d) : '')} tick={{ fontSize: 11, fill: '#64748B' }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={{ fontSize: 11, fill: '#64748B' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ paddingTop: 12, fontSize: 12, fontFamily: 'DM Sans' }} iconType="circle" iconSize={8} />
+                <Legend wrapperStyle={{ paddingTop: 12, fontSize: 12 }} iconType="circle" iconSize={8} />
                 <Area type="monotone" dataKey="chatgpt" name="ChatGPT" stroke="#00D4FF" strokeWidth={2} fill="url(#cgGrad)" dot={false} activeDot={{ r: 4, fill: '#00D4FF' }} />
                 <Area type="monotone" dataKey="perplexity" name="Perplexity" stroke="#A78BFA" strokeWidth={2} fill="url(#pxGrad)" dot={false} activeDot={{ r: 4, fill: '#A78BFA' }} />
                 <Area type="monotone" dataKey="gemini" name="Gemini" stroke="#F59E0B" strokeWidth={2} fill="url(#gmGrad)" dot={false} activeDot={{ r: 4, fill: '#F59E0B' }} />
               </AreaChart>
             </ResponsiveContainer>
-            {/* Overlay when showing placeholder data */}
             {isMockChart && (
-              <div
-                className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                style={{ background: 'rgba(10,10,11,0.55)', backdropFilter: 'blur(1px)' }}
-              >
-                <div
-                  className="text-center px-5 py-3 rounded-[8px]"
-                  style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.08)' }}
-                >
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ background: 'rgba(10,10,11,0.55)', backdropFilter: 'blur(1px)' }}>
+                <div className="text-center px-5 py-3 rounded-[8px]" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.08)' }}>
                   <p className="text-white text-[13px] font-medium mb-1">No scan data yet</p>
                   <p className="text-[12px]" style={{ color: '#64748B' }}>Run your first scan to see real visibility trends</p>
                 </div>
@@ -602,183 +670,58 @@ export function DashboardHome() {
         )}
       </div>
 
-      {/* Two-column row */}
-      <div className="flex flex-col md:flex-row gap-4">
-        {/* Fixes preview */}
-        <div className="rounded-[6px] p-5 flex-[58]" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="font-medium text-white text-[15px]">
-                {pendingFixes.length > 0 ? 'Gaps competitors are exploiting' : 'Fixes to improve visibility'}
-              </p>
-              {pendingFixes.length > 0 && (
-                <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>
-                  {pendingFixes.filter((f) => f.priority === 'high').length} critical — apply to stop losing citations
-                </p>
-              )}
-            </div>
-            <Link to="/dashboard/fixes" className="text-[13px]" style={{ color: '#00D4FF' }}>View all →</Link>
-          </div>
-          {fixesLoading ? (
-            <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <LoadingSkeleton key={i} height="44px" />)}</div>
-          ) : pendingFixes.length === 0 ? (
-            <EmptyState icon={CheckCircle} title="All caught up" description="No pending fixes. Your store is well-optimized." />
-          ) : (
-            <>
-              <div className="space-y-2">
-                {pendingFixes.slice(0, 3).map((fix) => (
-                  <Link key={fix.id} to={`/dashboard/fixes/${fix.id}`} className="flex items-start gap-3 py-2.5 px-3 rounded-[6px] hover:bg-white/[0.02] transition-colors">
-                    <PriorityDot priority={fix.priority} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] text-white font-medium truncate">{fix.title}</p>
-                      {fix.explanation && (
-                        <p className="text-[11px] mt-0.5 line-clamp-1" style={{ color: '#64748B' }}>{fix.explanation}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
-                      <span className="text-[11px] px-2 py-0.5 rounded" style={{ background: '#1a1a1f', color: '#64748B' }}>{fix.fix_type}</span>
-                      <span className="font-mono text-[12px]" style={{ color: '#00D4FF' }}>+{fix.est_impact}%</span>
-                      <ChevronRight size={14} style={{ color: '#64748B' }} />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-              {/* Dominant CTA */}
-              <Link
-                to="/dashboard/fixes"
-                className="flex items-center justify-center gap-2 w-full mt-4 py-2.5 rounded-[6px] text-[13px] font-semibold transition-all hover:opacity-90"
-                style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: '#EF4444' }}
-              >
-                🔥 Fix My Visibility ({pendingFixes.filter(f => f.priority === 'high').length} high-impact actions)
-              </Link>
-            </>
-          )}
-        </div>
-
-        {/* Competitors preview */}
-        <div className="rounded-[6px] p-5 flex-[42]" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="mb-4">
-            <p className="font-medium text-white text-[15px]">
-              {compList.length > 0 ? 'Brands stealing your citations' : "Who's being cited instead of you"}
-            </p>
-            {compList.length > 0 && (
-              <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>
-                {compList.length} competitor{compList.length > 1 ? 's' : ''} outranking you in AI results
-              </p>
-            )}
-          </div>
-          {compLoading ? (
-            <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <LoadingSkeleton key={i} height="36px" />)}</div>
-          ) : compList.length === 0 ? (
-            <EmptyState icon={Users} title="Scanning for competitors" description="We'll detect who's beating you in AI results." />
-          ) : (
-            <div className="space-y-3">
-              {compList.slice(0, 4).map((comp, i) => {
-                const citePct = comp.total_scans > 0 ? Math.round((comp.total_frequency / comp.total_scans) * 100) : 0;
-                // why_points[1] is the position insight (most useful for "why winning")
-                const whyLine = comp.why_points?.[1] ?? comp.why_points?.[0];
-                return (
-                  <div key={i} className="py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-                    <div className="flex items-center gap-3">
-                      <span className="w-4 text-[11px] font-mono text-right flex-shrink-0" style={{ color: '#334155' }}>#{i + 1}</span>
-                      <span className="flex-1 text-[13px] text-white font-medium">{comp.name}</span>
-                      {comp.platforms[0] && <PlatformBadge platform={comp.platforms[0] as any} />}
-                      <span className="text-[11px] font-mono flex-shrink-0" style={{ color: '#EF4444' }}>{citePct}%</span>
-                    </div>
-                    {whyLine && (
-                      <p className="text-[11px] ml-7 mt-0.5" style={{ color: '#64748B' }}>{whyLine}</p>
-                    )}
-                  </div>
-                );
-              })}
-              <Link to="/dashboard/competitors" className="block text-[12px] mt-3 pt-3 transition-colors hover:opacity-80" style={{ color: '#00D4FF', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                See full breakdown →
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Query visibility gaps */}
-      {(gapsLoading || (queryGaps && queryGaps.length > 0)) && (
-        <div
-          className="rounded-[6px] p-5 mt-4"
-          style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
-        >
-          <div className="flex items-start gap-3 mb-2">
+      {/* ── SECTION 6: Blind spots ────────────────────────────────────────────── */}
+      {(gapsLoading || gapList.length > 0) && (
+        <div className="rounded-[8px] p-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="flex items-start gap-3 mb-3">
             <div className="flex-1">
-              <p className="font-medium text-white text-[15px]">Blind spots — queries where you're invisible</p>
-              <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>
-                Exact AI search queries where you were not mentioned on any platform.
-              </p>
+              <p className="font-medium text-white text-[15px]">Queries where you're completely invisible</p>
+              <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>Every query below is a buyer asking AI for help — and you're not there</p>
             </div>
-            {queryGaps && queryGaps.length > 0 && (
-              <span
-                className="flex-shrink-0 text-[11px] font-mono px-2 py-0.5 rounded"
-                style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}
-              >
-                {queryGaps.length} gap{queryGaps.length !== 1 ? 's' : ''}
+            {gapList.length > 0 && (
+              <span className="flex-shrink-0 text-[11px] font-mono px-2 py-0.5 rounded" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                {gapList.length} gap{gapList.length !== 1 ? 's' : ''}
               </span>
             )}
           </div>
-
-          {/* Impact estimate */}
-          {!gapsLoading && queryGaps && queryGaps.length > 0 && (
+          {gapList.length > 0 && (
             <p className="text-[12px] mb-4 px-3 py-2 rounded-[4px]" style={{ background: 'rgba(239,68,68,0.06)', color: '#fca5a5' }}>
-              Fixing top {Math.min(5, queryGaps.length)} blind spots could increase visibility by ~{Math.min(5, queryGaps.length) * 4}%
+              Fixing top {Math.min(5, gapList.length)} gaps could increase visibility by ~{Math.min(5, gapList.length) * 4}%
             </p>
           )}
-
           {gapsLoading ? (
             <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <LoadingSkeleton key={i} height="36px" />)}</div>
-          ) : (() => {
-            const highValue = gapList.slice(0, 5);
-            const secondary = gapList.slice(5);
-            return (
-              <div className="space-y-4">
-                {/* High-value */}
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: '#EF4444' }}>High-value — fix these first</p>
+                <div className="space-y-1.5">
+                  {gapList.slice(0, 5).map((gap, i) => (
+                    <div key={i} className="flex items-center gap-3 py-2 px-3 rounded-[6px]" style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)' }}>
+                      <span className="text-[11px] flex-shrink-0" style={{ color: '#EF4444' }}>✕</span>
+                      <span className="flex-1 text-[13px]" style={{ color: '#cbd5e1' }}>{gap.query}</span>
+                      <div className="flex gap-1 flex-shrink-0">
+                        {gap.platforms.map(p => <span key={p} className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: '#1a1a1f', color: '#64748B' }}>{p}</span>)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {gapList.length > 5 && (
                 <div>
-                  <p className="text-[10px] uppercase tracking-widest mb-2 flex items-center gap-1.5" style={{ color: '#EF4444' }}>
-                    🔴 High-value missed queries — fix these first
-                  </p>
-                  <div className="space-y-1.5">
-                    {highValue.map((gap, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-3 py-2 px-3 rounded-[6px]"
-                        style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)' }}
-                      >
-                        <span className="text-[11px] flex-shrink-0" style={{ color: '#EF4444' }}>✕</span>
-                        <span className="flex-1 text-[13px]" style={{ color: '#cbd5e1' }}>{gap.query}</span>
-                        <div className="flex gap-1 flex-shrink-0">
-                          {gap.platforms.map((p) => (
-                            <span key={p} className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: '#1a1a1f', color: '#64748B' }}>{p}</span>
-                          ))}
-                        </div>
+                  <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: '#334155' }}>Secondary opportunities ({gapList.length - 5})</p>
+                  <div className="space-y-1">
+                    {gapList.slice(5).map((gap, i) => (
+                      <div key={i} className="flex items-center gap-3 py-1.5 px-3 rounded-[6px]" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                        <span className="text-[11px] flex-shrink-0" style={{ color: '#334155' }}>–</span>
+                        <span className="flex-1 text-[12px]" style={{ color: '#64748B' }}>{gap.query}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-
-                {/* Secondary */}
-                {secondary.length > 0 && (
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: '#64748B' }}>
-                      ⚪ Secondary opportunities ({secondary.length})
-                    </p>
-                    <div className="space-y-1">
-                      {secondary.map((gap, i) => (
-                        <div key={i} className="flex items-center gap-3 py-1.5 px-3 rounded-[6px]" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                          <span className="text-[11px] flex-shrink-0" style={{ color: '#334155' }}>–</span>
-                          <span className="flex-1 text-[12px]" style={{ color: '#64748B' }}>{gap.query}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

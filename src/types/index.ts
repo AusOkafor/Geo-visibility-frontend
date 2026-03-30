@@ -33,6 +33,7 @@ export interface Competitor {
   score: number;
   why_points: string[];
   class?: 'brand' | 'retailer';
+  tier?: 1 | 2 | 3;
 }
 
 export interface PlatformSource {
