@@ -31,7 +31,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import * as api from '../../lib/api';
 import { formatDate } from '../../lib/utils';
-import type { VisibilityScore, DailyScore, Competitor, Fix } from '../../types';
+import type { VisibilityScore, DailyScore, Competitor } from '../../types';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -47,94 +47,6 @@ function scoreStatus(score: number): { label: string; color: string } {
   if (score < 50) return { label: 'Needs work', color: '#F59E0B' };
   if (score < 75) return { label: 'Competitive', color: '#64748B' };
   return { label: 'Strong', color: '#00D4FF' };
-}
-
-interface InsightVerdict {
-  type: 'warning' | 'positive' | 'neutral';
-  verdict: string;
-  lines: string[];
-}
-
-function computeInsight(
-  scores: VisibilityScore[] | undefined,
-  daily: DailyScore[] | undefined,
-  competitors: Competitor[] | undefined,
-  pendingFixes: Fix[],
-  gapCount: number
-): InsightVerdict | null {
-  if (!scores || scores.length === 0) return null;
-  const avg = Math.round(scores.reduce((s, x) => s + x.score, 0) / scores.length);
-  const topComp = competitors?.[0];
-  const highFixes = pendingFixes.filter((f) => f.priority === 'high').length;
-  const topNames = competitors?.slice(0, 2).map((c) => c.name).join(' and ') ?? '';
-
-  let weekDelta: number | undefined;
-  if (daily && daily.length >= 2) {
-    const last = daily[daily.length - 1];
-    const prev = daily[Math.max(0, daily.length - 8)];
-    weekDelta = Math.round(
-      ((last.chatgpt + last.perplexity + last.gemini) - (prev.chatgpt + prev.perplexity + prev.gemini)) / 3
-    );
-  }
-
-  // Competitor multiplier
-  let multiplierLine = '';
-  if (topComp && topComp.total_scans > 0 && avg > 0) {
-    const compPct = Math.round((topComp.total_frequency / topComp.total_scans) * 100);
-    const mult = (compPct / avg).toFixed(1);
-    if (parseFloat(mult) > 1.2) {
-      multiplierLine = `Competitors are cited ${mult}× more than you`;
-    }
-  }
-
-  const gapLine = gapCount > 0 ? `You're invisible in ${gapCount} high-intent quer${gapCount === 1 ? 'y' : 'ies'}` : '';
-  const fixLine = highFixes > 0 ? `Fixing ${highFixes} issue${highFixes > 1 ? 's' : ''} could increase visibility by ~${Math.min(highFixes * 8, 35)}%` : '';
-
-  if (weekDelta !== undefined && weekDelta <= -5) {
-    return {
-      type: 'warning',
-      verdict: 'Visibility is dropping — act now',
-      lines: [
-        `Down ${Math.abs(weekDelta)} points this week${topNames ? ` — ${topNames} are gaining ground` : ''}`,
-        multiplierLine,
-        fixLine,
-      ].filter(Boolean),
-    };
-  }
-
-  if (avg < 20) {
-    return {
-      type: 'warning',
-      verdict: "You're losing visibility in AI search",
-      lines: [
-        topNames ? `${topNames} are being recommended instead of you` : 'Competitors are consistently cited over you',
-        multiplierLine,
-        gapLine,
-        fixLine,
-      ].filter(Boolean),
-    };
-  }
-
-  if (weekDelta !== undefined && weekDelta >= 5) {
-    return {
-      type: 'positive',
-      verdict: `Visibility up ${weekDelta} points — keep the momentum`,
-      lines: [
-        'Your recent changes are working across AI platforms',
-        fixLine || 'Continue applying fixes to maintain your edge',
-      ].filter(Boolean),
-    };
-  }
-
-  return {
-    type: 'neutral',
-    verdict: avg >= 50 ? 'Solid presence — room to grow' : 'Moderate visibility — competitors have the edge',
-    lines: [
-      topComp ? `${topComp.name} still outranks you in most queries` : '',
-      multiplierLine,
-      fixLine || "You're holding steady — run a scan to find new opportunities",
-    ].filter(Boolean),
-  };
 }
 
 // ─── scan progress stages ────────────────────────────────────────────────────
