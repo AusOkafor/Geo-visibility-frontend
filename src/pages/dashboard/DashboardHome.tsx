@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { X, CheckCircle, Users, ChevronRight, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { X, CheckCircle, Users, RefreshCw, CheckCircle2 } from 'lucide-react';
 import {
   AreaChart,
   Area,
@@ -243,7 +243,6 @@ export function DashboardHome() {
   const pxDelta = getPlatformDelta(dailyArr, 'perplexity');
   const gmDelta = getPlatformDelta(dailyArr, 'gemini');
   const gapList = queryGaps ?? [];
-  const insight = computeInsight(scores, daily, competitors, pendingFixes, gapList.length);
 
   // Per-platform sub-labels: raw query counts take priority (humans trust counts more than %)
   const platformSubLabel = (
