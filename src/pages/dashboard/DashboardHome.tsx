@@ -442,7 +442,7 @@ export function DashboardHome() {
       )}
 
       {/* ── SECTION 3b: Visibility Pipeline ─────────────────────────────────── */}
-      {pipeline && pipeline.steps?.length > 0 && !scanActive && (
+      {pipeline && pipeline.steps?.length > 0 && !scanActive && !isMockChart && (
         <div className="rounded-[8px] p-5 mb-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
           <p className="text-[14px] font-semibold text-white mb-1">Your visibility pipeline</p>
           <p className="text-[12px] mb-4" style={{ color: '#64748B' }}>{pipeline.message}</p>
@@ -509,7 +509,7 @@ export function DashboardHome() {
       )}
 
       {/* ── SECTION 3d: Next 3 Moves ─────────────────────────────────────────── */}
-      {nextActions && nextActions.length > 0 && !scanActive && (
+      {nextActions && nextActions.length > 0 && !scanActive && !isMockChart && (
         <div className="rounded-[8px] p-5 mb-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
           <p className="text-[14px] font-semibold text-white mb-1">Your next 3 moves</p>
           <p className="text-[12px] mb-4" style={{ color: '#64748B' }}>Highest-impact actions based on your current scan data</p>
@@ -537,7 +537,7 @@ export function DashboardHome() {
       )}
 
       {/* ── SECTION 3e: Quick Wins ────────────────────────────────────────────── */}
-      {quickWins && quickWins.length > 0 && !scanActive && (
+      {quickWins && quickWins.length > 0 && !scanActive && !isMockChart && (
         <div className="rounded-[8px] p-5 mb-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
           <p className="text-[14px] font-semibold text-white mb-1">Quick wins — 24–72 hours</p>
           <p className="text-[12px] mb-4" style={{ color: '#64748B' }}>Actions you can take today without waiting for scans</p>
