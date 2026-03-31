@@ -264,38 +264,50 @@ export function VisibilityPage() {
         </div>
       </div>
 
-      {/* AI Readiness Score */}
+      {/* AI Readiness — 3-bucket diagnosis */}
       {aiReadiness && (
         <div className="rounded-[6px] p-5 mb-6 mt-6" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start justify-between mb-5">
             <div>
-              <p className="font-medium text-white text-[15px]">AI Readiness Score</p>
-              <p className="text-[13px] mt-0.5" style={{ color: '#64748B' }}>{aiReadiness.summary}</p>
+              <p className="font-medium text-white text-[15px]">Why you're not appearing in AI results</p>
+              <p className="text-[13px] mt-0.5" style={{ color: '#64748B' }}>Every invisible brand fails for one of three reasons</p>
             </div>
             <div className="text-right flex-shrink-0 ml-4">
-              <p className="font-mono font-bold text-[32px] leading-none" style={{ color: aiReadiness.overall_score >= 70 ? '#00D4FF' : aiReadiness.overall_score >= 40 ? '#F59E0B' : '#EF4444' }}>
-                {aiReadiness.overall_score}
+              <p className="font-mono font-bold text-[32px] leading-none" style={{ color: aiReadiness.overall >= 70 ? '#00D4FF' : aiReadiness.overall >= 40 ? '#F59E0B' : '#EF4444' }}>
+                {aiReadiness.overall}
               </p>
               <p className="text-[10px] mt-0.5" style={{ color: '#64748B' }}>/ 100</p>
             </div>
           </div>
-          <div className="space-y-2.5">
-            {(aiReadiness.dimensions ?? []).map((dim) => (
-              <div key={dim.name}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[12px]" style={{ color: '#94a3b8' }}>{dim.name}</span>
-                  <span className="text-[12px] font-mono font-bold" style={{ color: dim.score >= 70 ? '#00D4FF' : dim.score >= 40 ? '#F59E0B' : '#EF4444' }}>{dim.score}</span>
+          <div className="space-y-3">
+            {(aiReadiness.dimensions ?? []).map((dim) => {
+              const pct = Math.round((dim.score / 10) * 100);
+              const color = dim.score >= 7 ? '#00D4FF' : dim.score >= 4 ? '#F59E0B' : '#EF4444';
+              const icon = dim.score >= 7 ? '✓' : dim.score >= 4 ? '⚠' : '✕';
+              return (
+                <div key={dim.name} className="rounded-[6px] p-4" style={{ background: dim.score < 4 ? 'rgba(239,68,68,0.04)' : 'rgba(255,255,255,0.02)', border: `1px solid ${dim.score < 4 ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.04)'}` }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[13px] font-bold" style={{ color }}>{icon}</span>
+                      <span className="text-[13px] font-semibold text-white">{dim.name}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: `${color}18`, color }}>{dim.label}</span>
+                    </div>
+                    <span className="text-[12px] font-mono font-bold" style={{ color }}>{dim.score}/10</span>
+                  </div>
+                  <div className="rounded-full overflow-hidden mb-2" style={{ height: 3, background: '#1a1a1f' }}>
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+                  </div>
+                  <p className="text-[12px]" style={{ color: '#94a3b8' }}>{dim.detail}</p>
                 </div>
-                <div className="rounded-full overflow-hidden" style={{ height: 3, background: '#1a1a1f' }}>
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${dim.score}%`, background: dim.score >= 70 ? '#00D4FF' : dim.score >= 40 ? '#F59E0B' : '#EF4444' }}
-                  />
-                </div>
-                <p className="text-[11px] mt-0.5" style={{ color: '#475569' }}>{dim.detail}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
+          {aiReadiness.top_action && (
+            <div className="mt-4 p-3 rounded-[6px]" style={{ background: 'rgba(0,212,255,0.05)', border: '1px solid rgba(0,212,255,0.15)' }}>
+              <p className="text-[11px] uppercase tracking-wider mb-1" style={{ color: '#00D4FF' }}>Fix this first</p>
+              <p className="text-[13px]" style={{ color: '#e2e8f0' }}>{aiReadiness.top_action}</p>
+            </div>
+          )}
         </div>
       )}
 

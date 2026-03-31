@@ -71,14 +71,15 @@ export interface LiveAnswer {
 
 export interface ReadinessDimension {
   name: string;
-  score: number;
+  score: number; // 0–10
+  label: string; // "Not found" | "Not trusted" etc.
   detail: string;
 }
 
 export interface AIReadinessScore {
-  overall_score: number;
+  overall: number; // 0–100
   dimensions: ReadinessDimension[];
-  summary: string;
+  top_action: string;
 }
 
 export interface NextAction {
@@ -126,6 +127,7 @@ export interface ScanProgress {
 export interface Fix {
   id: string;
   fix_type: 'description' | 'faq' | 'schema' | 'listing';
+  fix_layer: 'structure' | 'content' | 'authority';
   priority: 'high' | 'medium' | 'low';
   title: string;
   explanation: string;

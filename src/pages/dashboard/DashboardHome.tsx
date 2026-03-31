@@ -591,7 +591,7 @@ export function DashboardHome() {
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <span className="font-mono text-[12px] font-bold" style={{ color: '#00D4FF' }}>+{fix.est_impact}%</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: '#1a1a1f', color: '#64748B' }}>{fix.fix_type}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: fix.fix_layer === 'structure' ? 'rgba(167,139,250,0.1)' : fix.fix_layer === 'authority' ? 'rgba(245,158,11,0.1)' : 'rgba(0,212,255,0.08)', color: fix.fix_layer === 'structure' ? '#A78BFA' : fix.fix_layer === 'authority' ? '#F59E0B' : '#00D4FF' }}>{fix.fix_layer ?? fix.fix_type}</span>
                     </div>
                   </Link>
                 ))}
