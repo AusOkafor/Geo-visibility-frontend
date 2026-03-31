@@ -32,6 +32,7 @@ export interface Competitor {
   total_scans: number;
   score: number;
   why_points: string[];
+  top_queries?: string[];
   class?: 'brand' | 'retailer';
   tier?: 1 | 2 | 3;
 }
@@ -54,6 +55,72 @@ export interface BrandRecognition {
 export interface QueryGap {
   query: string;
   platforms: string[];
+  query_type?: string;
+  competitor_count?: number;
+  impact?: 'high' | 'medium' | 'low';
+  difficulty?: 'low' | 'medium' | 'hard';
+}
+
+export interface LiveAnswer {
+  query: string;
+  answer_text: string;
+  platform: string;
+  query_type: string;
+  scanned_at: string;
+}
+
+export interface ReadinessDimension {
+  name: string;
+  score: number;
+  detail: string;
+}
+
+export interface AIReadinessScore {
+  overall_score: number;
+  dimensions: ReadinessDimension[];
+  summary: string;
+}
+
+export interface NextAction {
+  type: string;
+  title: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  impact_score: number;
+}
+
+export interface PipelineStep {
+  stage: number;
+  name: string;
+  done: boolean;
+  message: string;
+}
+
+export interface VisibilityPipeline {
+  steps: PipelineStep[];
+  message: string;
+  overall_done: boolean;
+}
+
+export interface QuickWin {
+  id: string;
+  title: string;
+  copy: string;
+  action_url: string;
+  tags: string[];
+  effort: string;
+}
+
+export interface ScanProgress {
+  total_queries: number;
+  total_mentions: number;
+  first_scan_date: string;
+  last_scan_date: string;
+  delta_mentions: number;
+  delta_queries: number;
+  first_score: number;
+  last_score: number;
+  delta_score: number;
 }
 
 export interface Fix {

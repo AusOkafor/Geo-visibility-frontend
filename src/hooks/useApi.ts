@@ -79,3 +79,21 @@ export const useUpdateMerchant = () => {
     },
   });
 };
+
+export const useLiveAnswers = (limit = 20) =>
+  useQuery({ queryKey: ['live-answers', limit], queryFn: () => api.getLiveAnswers(limit) });
+
+export const useAIReadiness = () =>
+  useQuery({ queryKey: ['ai-readiness'], queryFn: api.getAIReadiness });
+
+export const useNextActions = () =>
+  useQuery({ queryKey: ['next-actions'], queryFn: api.getNextActions });
+
+export const useVisibilityPipeline = () =>
+  useQuery({ queryKey: ['visibility-pipeline'], queryFn: api.getVisibilityPipeline });
+
+export const useQuickWins = () =>
+  useQuery({ queryKey: ['quick-wins'], queryFn: api.getQuickWins });
+
+export const useScanProgress = () =>
+  useQuery({ queryKey: ['scan-progress'], queryFn: api.getScanProgress });

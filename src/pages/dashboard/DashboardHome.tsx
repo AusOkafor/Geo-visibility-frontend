@@ -27,6 +27,10 @@ import {
   usePlatformSources,
   useQueryGaps,
   useBrandRecognition,
+  useNextActions,
+  useVisibilityPipeline,
+  useQuickWins,
+  useScanProgress as useScanProgressQuery,
 } from '../../hooks/useApi';
 import { useQueryClient } from '@tanstack/react-query';
 import * as api from '../../lib/api';
@@ -131,6 +135,10 @@ export function DashboardHome() {
   const { data: platformSources } = usePlatformSources();
   const { data: queryGaps, isLoading: gapsLoading } = useQueryGaps();
   const { data: brandRecognition } = useBrandRecognition();
+  const { data: nextActions } = useNextActions();
+  const { data: pipeline } = useVisibilityPipeline();
+  const { data: quickWins } = useQuickWins();
+  const { data: scanProgressData } = useScanProgressQuery();
   const triggerScan = useTriggerScan();
 
   const chatgpt = scores?.find((s) => s.platform === 'chatgpt');
@@ -201,6 +209,12 @@ export function DashboardHome() {
       qc.refetchQueries({ queryKey: ['competitors'] }),
       qc.refetchQueries({ queryKey: ['platform-sources'] }),
       qc.refetchQueries({ queryKey: ['brand-recognition'] }),
+      qc.refetchQueries({ queryKey: ['next-actions'] }),
+      qc.refetchQueries({ queryKey: ['visibility-pipeline'] }),
+      qc.refetchQueries({ queryKey: ['quick-wins'] }),
+      qc.refetchQueries({ queryKey: ['scan-progress'] }),
+      qc.refetchQueries({ queryKey: ['live-answers'] }),
+      qc.refetchQueries({ queryKey: ['ai-readiness'] }),
     ]);
     // Fix-generation job runs ~45 s after the scan job completes — wait before fetching
     setTimeout(async () => {
@@ -427,6 +441,125 @@ export function DashboardHome() {
         </div>
       )}
 
+      {/* ── SECTION 3b: Visibility Pipeline ─────────────────────────────────── */}
+      {pipeline && pipeline.steps?.length > 0 && !scanActive && (
+        <div className="rounded-[8px] p-5 mb-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <p className="text-[14px] font-semibold text-white mb-1">Your visibility pipeline</p>
+          <p className="text-[12px] mb-4" style={{ color: '#64748B' }}>{pipeline.message}</p>
+          <div className="flex items-center gap-0">
+            {pipeline.steps.map((step, i) => {
+              const isLast = i === pipeline.steps.length - 1;
+              return (
+                <div key={step.stage} className="flex items-center flex-1 min-w-0">
+                  <div className="flex flex-col items-center flex-shrink-0">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold"
+                      style={{
+                        background: step.done ? '#00D4FF18' : 'rgba(255,255,255,0.04)',
+                        border: `1.5px solid ${step.done ? '#00D4FF' : 'rgba(255,255,255,0.1)'}`,
+                        color: step.done ? '#00D4FF' : '#475569',
+                      }}
+                    >
+                      {step.done ? '✓' : step.stage}
+                    </div>
+                    <p className="text-[10px] mt-1.5 text-center leading-tight w-20 truncate" style={{ color: step.done ? '#94a3b8' : '#475569' }}>{step.name}</p>
+                  </div>
+                  {!isLast && (
+                    <div className="flex-1 h-px mx-1 mb-4" style={{ background: step.done ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.06)' }} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {pipeline.steps.find(s => !s.done) && (
+            <p className="text-[12px] mt-3 pt-3 flex items-start gap-2" style={{ color: '#94a3b8', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+              <span style={{ color: '#F59E0B' }}>→</span>
+              {pipeline.steps.find(s => !s.done)!.message}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── SECTION 3c: Scan Progress (before/after delta) ───────────────────── */}
+      {scanProgressData && scanProgressData.last_scan_date !== scanProgressData.first_scan_date && !scanActive && (
+        <div className="rounded-[8px] p-5 mb-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <p className="text-[14px] font-semibold text-white mb-1">Progress since you started</p>
+          <p className="text-[12px] mb-4" style={{ color: '#64748B' }}>
+            {new Date(scanProgressData.first_scan_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} → {new Date(scanProgressData.last_scan_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </p>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: 'Overall Score', before: `${scanProgressData.first_score}%`, after: `${scanProgressData.last_score}%`, delta: scanProgressData.delta_score },
+              { label: 'Mentions', before: String(scanProgressData.total_mentions - scanProgressData.delta_mentions), after: String(scanProgressData.total_mentions), delta: scanProgressData.delta_mentions },
+              { label: 'Queries Covered', before: String(scanProgressData.total_queries - scanProgressData.delta_queries), after: String(scanProgressData.total_queries), delta: scanProgressData.delta_queries },
+            ].map((item) => (
+              <div key={item.label} className="rounded-[6px] p-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>{item.label}</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[11px] line-through" style={{ color: '#334155' }}>{item.before}</span>
+                  <span className="text-[15px] font-bold text-white">{item.after}</span>
+                </div>
+                <span className="text-[11px] font-mono mt-1 inline-block" style={{ color: item.delta > 0 ? '#00D4FF' : item.delta < 0 ? '#EF4444' : '#64748B' }}>
+                  {item.delta > 0 ? '+' : ''}{item.delta}{item.label === 'Overall Score' ? '%' : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── SECTION 3d: Next 3 Moves ─────────────────────────────────────────── */}
+      {nextActions && nextActions.length > 0 && !scanActive && (
+        <div className="rounded-[8px] p-5 mb-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <p className="text-[14px] font-semibold text-white mb-1">Your next 3 moves</p>
+          <p className="text-[12px] mb-4" style={{ color: '#64748B' }}>Highest-impact actions based on your current scan data</p>
+          <div className="space-y-2">
+            {nextActions.slice(0, 3).map((action, i) => (
+              <div key={i} className="flex items-start gap-3 py-3 px-3 rounded-[6px]" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                <div
+                  className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
+                  style={{
+                    background: action.priority === 'high' ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)',
+                    color: action.priority === 'high' ? '#EF4444' : '#F59E0B',
+                  }}
+                >
+                  {i + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-white">{action.title}</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: '#64748B' }}>{action.description}</p>
+                </div>
+                <span className="flex-shrink-0 text-[11px] font-mono font-bold" style={{ color: '#00D4FF' }}>+{action.impact_score}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── SECTION 3e: Quick Wins ────────────────────────────────────────────── */}
+      {quickWins && quickWins.length > 0 && !scanActive && (
+        <div className="rounded-[8px] p-5 mb-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <p className="text-[14px] font-semibold text-white mb-1">Quick wins — 24–72 hours</p>
+          <p className="text-[12px] mb-4" style={{ color: '#64748B' }}>Actions you can take today without waiting for scans</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {quickWins.slice(0, 4).map((win) => (
+              <div key={win.id} className="rounded-[6px] p-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <p className="text-[13px] font-medium text-white leading-snug">{win.title}</p>
+                  <span className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,212,255,0.08)', color: '#00D4FF' }}>{win.effort}</span>
+                </div>
+                <p className="text-[12px] leading-relaxed mb-2" style={{ color: '#94a3b8' }}>{win.copy}</p>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {win.tags.map(tag => (
+                    <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: 'rgba(255,255,255,0.04)', color: '#475569' }}>{tag}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── SECTION 4: Fixes + Competitors ───────────────────────────────────── */}
       <div className="flex flex-col md:flex-row gap-4 mb-5">
         {/* Fixes */}
@@ -611,7 +744,13 @@ export function DashboardHome() {
                     <div key={i} className="flex items-center gap-3 py-2 px-3 rounded-[6px]" style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)' }}>
                       <span className="text-[11px] flex-shrink-0" style={{ color: '#EF4444' }}>✕</span>
                       <span className="flex-1 text-[13px]" style={{ color: '#cbd5e1' }}>{gap.query}</span>
-                      <div className="flex gap-1 flex-shrink-0">
+                      <div className="flex gap-1 flex-shrink-0 items-center">
+                        {gap.competitor_count !== undefined && gap.competitor_count > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(239,68,68,0.12)', color: '#fca5a5' }}>{gap.competitor_count} comp</span>
+                        )}
+                        {gap.impact && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: gap.impact === 'high' ? 'rgba(239,68,68,0.1)' : gap.impact === 'medium' ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.04)', color: gap.impact === 'high' ? '#EF4444' : gap.impact === 'medium' ? '#F59E0B' : '#64748B' }}>{gap.impact}</span>
+                        )}
                         {gap.platforms.map(p => <span key={p} className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: '#1a1a1f', color: '#64748B' }}>{p}</span>)}
                       </div>
                     </div>

@@ -258,7 +258,7 @@ export function CompetitorsPage() {
                     <p className="text-[11px] uppercase tracking-wider mb-3" style={{ color: '#64748B' }}>
                       Why AI cites them
                     </p>
-                    <ul className="space-y-2">
+                    <ul className="space-y-2 mb-3">
                       {comp.why_points.map((pt, j) => (
                         <li key={j} className="flex items-start gap-2 text-[13px]" style={{ color: '#94a3b8' }}>
                           <span style={{ color: '#EF4444', marginTop: 2, flexShrink: 0 }}>▸</span>
@@ -266,6 +266,16 @@ export function CompetitorsPage() {
                         </li>
                       ))}
                     </ul>
+                    {comp.top_queries && comp.top_queries.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: '#475569' }}>Top queries they win</p>
+                        <div className="space-y-1">
+                          {comp.top_queries.slice(0, 3).map((q, j) => (
+                            <p key={j} className="text-[11px] px-2 py-1 rounded" style={{ background: 'rgba(239,68,68,0.06)', color: '#fca5a5' }}>"{q}"</p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Platform breakdown */}

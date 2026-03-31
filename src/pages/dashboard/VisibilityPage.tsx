@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
-import { useVisibilityScores, useDailyScores } from '../../hooks/useApi';
+import { useVisibilityScores, useDailyScores, useQueryGaps, useAIReadiness, useLiveAnswers } from '../../hooks/useApi';
 import { formatDate } from '../../lib/utils';
 
 type Range = '7d' | '30d' | '90d';
@@ -28,14 +28,6 @@ const MOCK_DAILY_DATA = Array.from({ length: 30 }, (_, i) => {
   };
 });
 
-const QUERY_BREAKDOWN = [
-  { query: 'Best [category] under $100', chatgpt: 4, perplexity: 12, gemini: 3, avg: 6, trend: '↓' },
-  { query: 'Top [category] brands 2026', chatgpt: 11, perplexity: 28, gemini: 9, avg: 16, trend: '↑' },
-  { query: 'Handmade [category] recommendations', chatgpt: 6, perplexity: 18, gemini: 4, avg: 9, trend: '→' },
-  { query: '[Brand] reviews', chatgpt: 15, perplexity: 35, gemini: 12, avg: 21, trend: '↑' },
-  { query: 'Where to buy [category] online', chatgpt: 3, perplexity: 8, gemini: 2, avg: 4, trend: '↓' },
-];
-
 const DIST_BUCKETS = [
   { label: '0–10%', count: 3 },
   { label: '11–25%', count: 1 },
@@ -44,17 +36,6 @@ const DIST_BUCKETS = [
   { label: '76–100%', count: 0 },
 ];
 
-function scoreColor(v: number) {
-  if (v > 15) return '#00D4FF';
-  if (v < 5) return '#64748B';
-  return '#ffffff';
-}
-
-function trendColor(t: string) {
-  if (t === '↑') return '#00D4FF';
-  if (t === '↓') return '#EF4444';
-  return '#64748B';
-}
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -79,6 +60,9 @@ export function VisibilityPage() {
 
   const { data: scores, isLoading: scoresLoading } = useVisibilityScores(days);
   const { data: daily, isLoading: dailyLoading } = useDailyScores(days);
+  const { data: queryGaps } = useQueryGaps();
+  const { data: aiReadiness } = useAIReadiness();
+  const { data: liveAnswers } = useLiveAnswers(10);
 
   const chartData = daily?.length ? daily : MOCK_DAILY_DATA;
 
@@ -188,55 +172,43 @@ export function VisibilityPage() {
         )}
       </div>
 
-      {/* Query breakdown table */}
-      <div
-        className="rounded-[6px] overflow-hidden mb-6"
-        style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
-      >
-        <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <p className="font-medium text-white text-[15px]">Query-level breakdown</p>
-          <p className="text-[13px] mt-0.5" style={{ color: '#64748B' }}>
-            Which question types you're winning and losing
-          </p>
+      {/* Query gaps */}
+      {queryGaps && queryGaps.length > 0 && (
+        <div
+          className="rounded-[6px] overflow-hidden mb-6"
+          style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
+        >
+          <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <div>
+              <p className="font-medium text-white text-[15px]">Query gaps — where you're invisible</p>
+              <p className="text-[13px] mt-0.5" style={{ color: '#64748B' }}>Queries where competitors appear but you don't</p>
+            </div>
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>{queryGaps.length} gaps</span>
+          </div>
+          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.03)' }}>
+            {queryGaps.slice(0, 10).map((gap, i) => (
+              <div key={i} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.01]">
+                <span className="text-[11px] flex-shrink-0" style={{ color: '#EF4444' }}>✕</span>
+                <span className="flex-1 text-[13px]" style={{ color: '#94a3b8' }}>{gap.query}</span>
+                <div className="flex gap-1.5 items-center flex-shrink-0">
+                  {gap.competitor_count !== undefined && gap.competitor_count > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(239,68,68,0.1)', color: '#fca5a5' }}>{gap.competitor_count} comp</span>
+                  )}
+                  {gap.impact && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded capitalize font-medium" style={{ background: gap.impact === 'high' ? 'rgba(239,68,68,0.12)' : gap.impact === 'medium' ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.04)', color: gap.impact === 'high' ? '#EF4444' : gap.impact === 'medium' ? '#F59E0B' : '#64748B' }}>{gap.impact} impact</span>
+                  )}
+                  {gap.difficulty && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: 'rgba(255,255,255,0.04)', color: '#64748B' }}>{gap.difficulty} fix</span>
+                  )}
+                  {gap.platforms.map(p => (
+                    <span key={p} className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: '#0d0d10', color: '#475569' }}>{p}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                {['Query Type', 'ChatGPT', 'Perplexity', 'Gemini', 'Avg', 'Trend'].map((h) => (
-                  <th
-                    key={h}
-                    className="text-left px-5 py-3 font-normal text-[11px] uppercase tracking-wider"
-                    style={{ color: '#64748B' }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {QUERY_BREAKDOWN.map((row, i) => (
-                <tr
-                  key={i}
-                  className="transition-colors hover:bg-white/[0.02]"
-                  style={{
-                    height: 48,
-                    background: i % 2 === 1 ? '#0d0d10' : 'transparent',
-                    borderBottom: '1px solid rgba(255,255,255,0.03)',
-                  }}
-                >
-                  <td className="px-5 text-[#94a3b8]">{row.query}</td>
-                  <td className="px-5 font-mono" style={{ color: scoreColor(row.chatgpt) }}>{row.chatgpt}%</td>
-                  <td className="px-5 font-mono" style={{ color: scoreColor(row.perplexity) }}>{row.perplexity}%</td>
-                  <td className="px-5 font-mono" style={{ color: scoreColor(row.gemini) }}>{row.gemini}%</td>
-                  <td className="px-5 font-mono text-white">{row.avg}%</td>
-                  <td className="px-5 font-mono" style={{ color: trendColor(row.trend) }}>{row.trend}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
 
       {/* Distribution */}
       <div
@@ -291,6 +263,60 @@ export function VisibilityPage() {
           Most of your queries score below 10% — focus on the 'description' fix to move into the 11–25% bucket.
         </div>
       </div>
+
+      {/* AI Readiness Score */}
+      {aiReadiness && (
+        <div className="rounded-[6px] p-5 mb-6 mt-6" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <p className="font-medium text-white text-[15px]">AI Readiness Score</p>
+              <p className="text-[13px] mt-0.5" style={{ color: '#64748B' }}>{aiReadiness.summary}</p>
+            </div>
+            <div className="text-right flex-shrink-0 ml-4">
+              <p className="font-mono font-bold text-[32px] leading-none" style={{ color: aiReadiness.overall_score >= 70 ? '#00D4FF' : aiReadiness.overall_score >= 40 ? '#F59E0B' : '#EF4444' }}>
+                {aiReadiness.overall_score}
+              </p>
+              <p className="text-[10px] mt-0.5" style={{ color: '#64748B' }}>/ 100</p>
+            </div>
+          </div>
+          <div className="space-y-2.5">
+            {aiReadiness.dimensions.map((dim) => (
+              <div key={dim.name}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[12px]" style={{ color: '#94a3b8' }}>{dim.name}</span>
+                  <span className="text-[12px] font-mono font-bold" style={{ color: dim.score >= 70 ? '#00D4FF' : dim.score >= 40 ? '#F59E0B' : '#EF4444' }}>{dim.score}</span>
+                </div>
+                <div className="rounded-full overflow-hidden" style={{ height: 3, background: '#1a1a1f' }}>
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${dim.score}%`, background: dim.score >= 70 ? '#00D4FF' : dim.score >= 40 ? '#F59E0B' : '#EF4444' }}
+                  />
+                </div>
+                <p className="text-[11px] mt-0.5" style={{ color: '#475569' }}>{dim.detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Live AI Answers */}
+      {liveAnswers && liveAnswers.length > 0 && (
+        <div className="rounded-[6px] p-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <p className="font-medium text-white text-[15px] mb-1">What AI actually says about your category</p>
+          <p className="text-[13px] mb-4" style={{ color: '#64748B' }}>Verbatim answers from recent scans — see how AI frames recommendations</p>
+          <div className="space-y-3">
+            {liveAnswers.map((answer, i) => (
+              <div key={i} className="rounded-[6px] p-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: answer.platform === 'chatgpt' ? 'rgba(0,212,255,0.1)' : answer.platform === 'perplexity' ? 'rgba(167,139,250,0.1)' : 'rgba(245,158,11,0.1)', color: answer.platform === 'chatgpt' ? '#00D4FF' : answer.platform === 'perplexity' ? '#A78BFA' : '#F59E0B' }}>{answer.platform}</span>
+                  <span className="text-[11px]" style={{ color: '#475569' }}>{answer.query}</span>
+                </div>
+                <p className="text-[12px] leading-relaxed line-clamp-3" style={{ color: '#94a3b8' }}>{answer.answer_text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
