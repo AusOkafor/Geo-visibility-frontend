@@ -91,3 +91,6 @@ export const getQuickWins = (): Promise<QuickWin[]> =>
 
 export const getScanProgress = (): Promise<ScanProgress> =>
   request('/visibility/progress');
+
+export const getSchemaStatus = (): Promise<{ active: boolean; value: string | null }> =>
+  request('/schema/status');

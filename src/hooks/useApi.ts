@@ -97,3 +97,6 @@ export const useQuickWins = () =>
 
 export const useScanProgress = () =>
   useQuery({ queryKey: ['scan-progress'], queryFn: api.getScanProgress });
+
+export const useSchemaStatus = () =>
+  useQuery({ queryKey: ['schema-status'], queryFn: api.getSchemaStatus });

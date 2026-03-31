@@ -4,7 +4,7 @@ import { ArrowLeft, Copy, Check } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { VisibilityBar } from '../../components/ui/VisibilityBar';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
-import { useFix, useApproveFix, useRejectFix, useMerchant } from '../../hooks/useApi';
+import { useFix, useApproveFix, useRejectFix, useMerchant, useSchemaStatus } from '../../hooks/useApi';
 
 const MOCK_FIX = {
   id: '1',
@@ -37,6 +37,7 @@ export function FixDetailPage() {
 
   const { data: fix, isLoading } = useFix(id ?? '');
   const { data: merchant } = useMerchant();
+  const { data: schemaStatus } = useSchemaStatus();
   const approveMutation = useApproveFix();
   const rejectMutation = useRejectFix();
 
@@ -399,21 +400,56 @@ export function FixDetailPage() {
               </div>
             ) : isMarkedManual ? (
               <div className="py-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[20px]">✓</span>
-                  <span className="text-[13px] font-medium" style={{ color: '#00D4FF' }}>
-                    {data.fix_type === 'schema'
-                      ? 'Schema active — AI can now parse your catalog structure'
-                      : data.fix_type === 'faq'
-                      ? 'FAQ added — AI can now match your answers to buyer queries'
-                      : 'Listing submitted — building external citation signals'}
-                  </span>
-                </div>
-                <p className="text-[12px]" style={{ color: '#64748B' }}>
-                  {data.fix_type === 'schema'
-                    ? 'Your next scan will check for structured data recognition. Results typically show in 48–72 hours.'
-                    : 'Your next scan will measure the impact. Check back after the next scan runs.'}
-                </p>
+                {data.fix_type === 'schema' ? (
+                  /* Schema: show live metafield detection status */
+                  <>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ background: schemaStatus?.active ? '#22c55e' : '#F59E0B' }}
+                      />
+                      <span className="text-[13px] font-medium" style={{ color: schemaStatus?.active ? '#22c55e' : '#F59E0B' }}>
+                        {schemaStatus?.active
+                          ? 'Schema detected on site — AI-readable structure enabled'
+                          : 'Waiting for app block to be enabled in your theme'}
+                      </span>
+                    </div>
+                    {schemaStatus?.active ? (
+                      <p className="text-[12px]" style={{ color: '#64748B' }}>
+                        Your JSON-LD is live. The next scan will measure the impact on AI citations.
+                      </p>
+                    ) : (
+                      <div className="space-y-1 mt-2">
+                        <p className="text-[12px]" style={{ color: '#64748B' }}>
+                          JSON-LD stored ✓ — now enable the app block so it renders on your storefront:
+                        </p>
+                        <a
+                          href={themeEditorUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[12px] underline"
+                          style={{ color: '#00D4FF' }}
+                        >
+                          Open Theme Customizer → App embeds → GEO Visibility Schema →
+                        </a>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[20px]">✓</span>
+                      <span className="text-[13px] font-medium" style={{ color: '#00D4FF' }}>
+                        {data.fix_type === 'faq'
+                          ? 'FAQ added — AI can now match your answers to buyer queries'
+                          : 'Listing submitted — building external citation signals'}
+                      </span>
+                    </div>
+                    <p className="text-[12px]" style={{ color: '#64748B' }}>
+                      Your next scan will measure the impact. Check back after the next scan runs.
+                    </p>
+                  </>
+                )}
               </div>
             ) : isRejected ? (
               <div className="text-center py-4">
