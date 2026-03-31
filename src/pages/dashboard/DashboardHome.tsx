@@ -462,7 +462,7 @@ export function DashboardHome() {
                     >
                       {step.done ? '✓' : step.stage}
                     </div>
-                    <p className="text-[10px] mt-1.5 text-center leading-tight w-20 truncate" style={{ color: step.done ? '#94a3b8' : '#475569' }}>{step.name}</p>
+                    <p className="text-[10px] mt-1.5 text-center leading-tight max-w-[72px]" style={{ color: step.done ? '#94a3b8' : '#475569', wordBreak: 'break-word' }}>{step.name}</p>
                   </div>
                   {!isLast && (
                     <div className="flex-1 h-px mx-1 mb-4" style={{ background: step.done ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.06)' }} />
