@@ -200,7 +200,7 @@ export function VisibilityPage() {
                   {gap.difficulty && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: 'rgba(255,255,255,0.04)', color: '#64748B' }}>{gap.difficulty} fix</span>
                   )}
-                  {gap.platforms.map(p => (
+                  {(gap.platforms ?? []).map(p => (
                     <span key={p} className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: '#0d0d10', color: '#475569' }}>{p}</span>
                   ))}
                 </div>
@@ -280,7 +280,7 @@ export function VisibilityPage() {
             </div>
           </div>
           <div className="space-y-2.5">
-            {aiReadiness.dimensions.map((dim) => (
+            {(aiReadiness.dimensions ?? []).map((dim) => (
               <div key={dim.name}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[12px]" style={{ color: '#94a3b8' }}>{dim.name}</span>

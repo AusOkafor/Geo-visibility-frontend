@@ -259,7 +259,7 @@ export function CompetitorsPage() {
                       Why AI cites them
                     </p>
                     <ul className="space-y-2 mb-3">
-                      {comp.why_points.map((pt, j) => (
+                      {(comp.why_points ?? []).map((pt, j) => (
                         <li key={j} className="flex items-start gap-2 text-[13px]" style={{ color: '#94a3b8' }}>
                           <span style={{ color: '#EF4444', marginTop: 2, flexShrink: 0 }}>▸</span>
                           {pt}

@@ -550,7 +550,7 @@ export function DashboardHome() {
                 </div>
                 <p className="text-[12px] leading-relaxed mb-2" style={{ color: '#94a3b8' }}>{win.copy}</p>
                 <div className="flex items-center gap-1 flex-wrap">
-                  {win.tags.map(tag => (
+                  {(win.tags ?? []).map(tag => (
                     <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: 'rgba(255,255,255,0.04)', color: '#475569' }}>{tag}</span>
                   ))}
                 </div>
