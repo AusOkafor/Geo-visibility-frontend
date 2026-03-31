@@ -4,7 +4,7 @@ import { ArrowLeft, Copy, Check } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { VisibilityBar } from '../../components/ui/VisibilityBar';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
-import { useFix, useApproveFix, useRejectFix } from '../../hooks/useApi';
+import { useFix, useApproveFix, useRejectFix, useMerchant } from '../../hooks/useApi';
 
 const MOCK_FIX = {
   id: '1',
@@ -33,8 +33,10 @@ export function FixDetailPage() {
   const [rejectConfirm, setRejectConfirm] = useState(false);
   const [applyError, setApplyError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showManualInstall, setShowManualInstall] = useState(false);
 
   const { data: fix, isLoading } = useFix(id ?? '');
+  const { data: merchant } = useMerchant();
   const approveMutation = useApproveFix();
   const rejectMutation = useRejectFix();
 
@@ -100,37 +102,34 @@ export function FixDetailPage() {
     });
   }
 
-  // Manual fix instructions per type
-  const MANUAL_INSTRUCTIONS: Record<string, { steps: string[]; destination: string }> = {
-    schema: {
-      destination: 'Shopify admin → Online Store → Themes → Edit code → product.liquid (or sections/main-product.liquid)',
-      steps: [
-        'Copy the JSON-LD above using the Copy button',
-        'In Shopify admin, go to Online Store → Themes → Edit code',
-        'Open product.liquid or sections/main-product.liquid',
-        'Paste the <script type="application/ld+json"> block before </body>',
-        'Save and click "Mark as Done" below',
-      ],
-    },
-    faq: {
-      destination: 'Your storefront — add as a FAQ page or FAQ section on product pages',
-      steps: [
-        'Copy the FAQ content above',
-        'In Shopify admin, create a new Page titled "FAQ" (or add to existing)',
-        'Paste the Q&A pairs as formatted content',
-        'Optionally add the page to your navigation menu',
-        'Save and click "Mark as Done" below',
-      ],
-    },
-    listing: {
-      destination: 'External directories — Google Business Profile, Yelp, industry directories',
-      steps: [
-        'Copy the listing description above',
-        'Submit to the directory links provided in the content',
-        'Use the description as your standard brand bio across all listings',
-        'Click "Mark as Done" once you\'ve submitted to at least one directory',
-      ],
-    },
+  // Shopify theme customizer deep-link for app embed/block installation
+  const shopDomain = merchant?.shop_domain ?? '';
+  const themeEditorUrl = shopDomain
+    ? `https://${shopDomain}/admin/themes/current/editor?context=apps`
+    : 'https://admin.shopify.com';
+
+  // Manual install steps per fix type (fallback path)
+  const MANUAL_STEPS: Record<string, string[]> = {
+    schema: [
+      'Copy the JSON-LD using the Copy button above',
+      'In Shopify admin, go to Online Store → Themes → Edit code',
+      'Open product.liquid or sections/main-product.liquid',
+      'Paste the <script type="application/ld+json"> block before </body>',
+      'Save, then click "Mark as Done" below',
+    ],
+    faq: [
+      'Copy the FAQ content using the Copy button above',
+      'In Shopify admin, go to Pages → Add page, title it "FAQ"',
+      'Paste the Q&A pairs as the page content',
+      'Optionally add the FAQ page to your store navigation',
+      'Save, then click "Mark as Done" below',
+    ],
+    listing: [
+      'Copy the listing description using the Copy button above',
+      'Submit to the directories listed in the content',
+      'Use this description as your standard brand bio',
+      'Click "Mark as Done" once submitted to at least one directory',
+    ],
   };
 
   return (
@@ -400,26 +399,21 @@ export function FixDetailPage() {
               </div>
             ) : isMarkedManual ? (
               <div className="py-2">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[13px] font-medium" style={{ color: '#F59E0B' }}>
-                    ✓ Marked as done — manual steps required
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[20px]">✓</span>
+                  <span className="text-[13px] font-medium" style={{ color: '#00D4FF' }}>
+                    {data.fix_type === 'schema'
+                      ? 'Schema active — AI can now parse your catalog structure'
+                      : data.fix_type === 'faq'
+                      ? 'FAQ added — AI can now match your answers to buyer queries'
+                      : 'Listing submitted — building external citation signals'}
                   </span>
                 </div>
-                <p className="text-[12px] mb-3" style={{ color: '#64748B' }}>
-                  This change needs to be added to your store manually. Follow the steps below.
+                <p className="text-[12px]" style={{ color: '#64748B' }}>
+                  {data.fix_type === 'schema'
+                    ? 'Your next scan will check for structured data recognition. Results typically show in 48–72 hours.'
+                    : 'Your next scan will measure the impact. Check back after the next scan runs.'}
                 </p>
-                {MANUAL_INSTRUCTIONS[data.fix_type] && (
-                  <div className="space-y-1.5">
-                    {MANUAL_INSTRUCTIONS[data.fix_type].steps.map((step, i) => (
-                      <div key={i} className="flex items-start gap-2 text-[12px]">
-                        <span className="font-mono flex-shrink-0 mt-0.5" style={{ color: '#F59E0B' }}>
-                          {i + 1}.
-                        </span>
-                        <span style={{ color: '#94a3b8' }}>{step}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             ) : isRejected ? (
               <div className="text-center py-4">
@@ -449,68 +443,147 @@ export function FixDetailPage() {
                 </div>
               </div>
             ) : isManualFix ? (
-              /* Manual fix flow: copy content + step-by-step instructions */
+              /* Two-path install flow for schema/faq/listing */
               <>
-                <div
-                  className="rounded-[6px] p-3 mb-2"
-                  style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}
-                >
-                  <p className="text-[12px] font-medium mb-1" style={{ color: '#F59E0B' }}>
-                    Manual action required
-                  </p>
-                  <p className="text-[11px]" style={{ color: '#94a3b8' }}>
-                    This fix can't be auto-applied. Copy the generated content and add it to your store manually.
-                  </p>
-                  {MANUAL_INSTRUCTIONS[data.fix_type] && (
-                    <p className="text-[11px] mt-1.5" style={{ color: '#64748B' }}>
-                      Where: {MANUAL_INSTRUCTIONS[data.fix_type].destination}
-                    </p>
-                  )}
-                </div>
+                {data.fix_type === 'schema' && !showManualInstall ? (
+                  /* Primary path: app block install (lowest friction) */
+                  <>
+                    <div
+                      className="rounded-[6px] p-3 mb-1"
+                      style={{ background: 'rgba(0,212,255,0.05)', border: '1px solid rgba(0,212,255,0.15)' }}
+                    >
+                      <p className="text-[12px] font-medium mb-0.5" style={{ color: '#00D4FF' }}>
+                        Recommended — Enable via App Block
+                      </p>
+                      <p className="text-[11px]" style={{ color: '#94a3b8' }}>
+                        Add the GEO.visibility schema block to your theme in 2 steps — no code editing required.
+                      </p>
+                    </div>
 
-                {/* Steps */}
-                {MANUAL_INSTRUCTIONS[data.fix_type] && (
-                  <div className="space-y-1.5 mb-3">
-                    {MANUAL_INSTRUCTIONS[data.fix_type].steps.slice(0, -1).map((step, i) => (
-                      <div key={i} className="flex items-start gap-2 text-[12px]">
-                        <span className="font-mono flex-shrink-0 mt-0.5" style={{ color: '#64748B' }}>
-                          {i + 1}.
-                        </span>
-                        <span style={{ color: '#94a3b8' }}>{step}</span>
+                    <div className="space-y-1.5 mb-3">
+                      {[
+                        'Open your Shopify theme customizer (button below)',
+                        'Find "App embeds" in the left sidebar → enable GEO.visibility Schema',
+                        'Save your theme, then click "Mark as Done"',
+                      ].map((step, i) => (
+                        <div key={i} className="flex items-start gap-2 text-[12px]">
+                          <span className="font-mono flex-shrink-0 mt-0.5" style={{ color: '#00D4FF' }}>
+                            {i + 1}.
+                          </span>
+                          <span style={{ color: '#94a3b8' }}>{step}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <a
+                      href={themeEditorUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full font-medium text-[14px] flex items-center justify-center gap-2 transition-all hover:brightness-110"
+                      style={{
+                        background: '#00D4FF',
+                        color: '#0A0A0B',
+                        height: 44,
+                        borderRadius: 6,
+                        textDecoration: 'none',
+                        display: 'flex',
+                      }}
+                    >
+                      Open Theme Customizer →
+                    </a>
+
+                    <button
+                      onClick={handleApply}
+                      disabled={isApplying}
+                      className="w-full py-2.5 text-[13px] font-medium transition-all"
+                      style={{
+                        background: 'rgba(0,212,255,0.08)',
+                        color: '#00D4FF',
+                        borderRadius: 6,
+                        border: '1px solid rgba(0,212,255,0.15)',
+                        opacity: isApplying ? 0.7 : 1,
+                      }}
+                    >
+                      {isApplying ? 'Saving...' : "Mark as Done"}
+                    </button>
+
+                    <button
+                      onClick={() => setShowManualInstall(true)}
+                      className="w-full py-2 text-[11px] transition-colors hover:text-white"
+                      style={{ color: '#475569' }}
+                    >
+                      Using a custom theme? Manual install instead →
+                    </button>
+                  </>
+                ) : (
+                  /* Fallback path: manual paste */
+                  <>
+                    {data.fix_type === 'schema' && (
+                      <button
+                        onClick={() => setShowManualInstall(false)}
+                        className="w-full text-left text-[11px] mb-2 transition-colors hover:text-white"
+                        style={{ color: '#475569' }}
+                      >
+                        ← Back to App Block install (recommended)
+                      </button>
+                    )}
+
+                    <div
+                      className="rounded-[6px] p-3 mb-2"
+                      style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.15)' }}
+                    >
+                      <p className="text-[12px] font-medium mb-0.5" style={{ color: '#F59E0B' }}>
+                        Manual install
+                      </p>
+                      <p className="text-[11px]" style={{ color: '#94a3b8' }}>
+                        Copy the generated content and paste it into your store directly.
+                      </p>
+                    </div>
+
+                    {MANUAL_STEPS[data.fix_type] && (
+                      <div className="space-y-1.5 mb-3">
+                        {MANUAL_STEPS[data.fix_type].map((step, i) => (
+                          <div key={i} className="flex items-start gap-2 text-[12px]">
+                            <span className="font-mono flex-shrink-0 mt-0.5" style={{ color: '#64748B' }}>
+                              {i + 1}.
+                            </span>
+                            <span style={{ color: '#94a3b8' }}>{step}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    )}
+
+                    <button
+                      onClick={handleCopy}
+                      className="w-full font-medium text-[14px] flex items-center justify-center gap-2 transition-all hover:brightness-110"
+                      style={{
+                        background: copied ? 'rgba(0,212,255,0.15)' : '#00D4FF',
+                        color: copied ? '#00D4FF' : '#0A0A0B',
+                        height: 44,
+                        borderRadius: 6,
+                        border: copied ? '1px solid rgba(0,212,255,0.4)' : 'none',
+                      }}
+                    >
+                      {copied ? <Check size={15} /> : <Copy size={15} />}
+                      {copied ? 'Copied' : 'Copy Generated Content'}
+                    </button>
+
+                    <button
+                      onClick={handleApply}
+                      disabled={isApplying}
+                      className="w-full py-2.5 text-[13px] font-medium transition-all"
+                      style={{
+                        background: 'rgba(245,158,11,0.08)',
+                        color: '#F59E0B',
+                        borderRadius: 6,
+                        border: '1px solid rgba(245,158,11,0.15)',
+                        opacity: isApplying ? 0.7 : 1,
+                      }}
+                    >
+                      {isApplying ? 'Saving...' : "Mark as Done (I've added it manually)"}
+                    </button>
+                  </>
                 )}
-
-                <button
-                  onClick={handleCopy}
-                  className="w-full font-medium text-[14px] flex items-center justify-center gap-2 transition-all hover:brightness-110"
-                  style={{
-                    background: copied ? 'rgba(0,212,255,0.15)' : '#00D4FF',
-                    color: copied ? '#00D4FF' : '#0A0A0B',
-                    height: 44,
-                    borderRadius: 6,
-                    border: copied ? '1px solid rgba(0,212,255,0.4)' : 'none',
-                  }}
-                >
-                  {copied ? <Check size={15} /> : <Copy size={15} />}
-                  {copied ? 'Copied to clipboard' : 'Copy Generated Content'}
-                </button>
-
-                <button
-                  onClick={handleApply}
-                  disabled={isApplying}
-                  className="w-full py-2.5 text-[13px] font-medium transition-all hover:brightness-110"
-                  style={{
-                    background: 'rgba(245,158,11,0.1)',
-                    color: '#F59E0B',
-                    borderRadius: 6,
-                    border: '1px solid rgba(245,158,11,0.2)',
-                    opacity: isApplying ? 0.7 : 1,
-                  }}
-                >
-                  {isApplying ? 'Saving...' : "Mark as Done (I've added it manually)"}
-                </button>
 
                 {applyError && (
                   <p className="text-[12px] text-center" style={{ color: '#EF4444' }}>
