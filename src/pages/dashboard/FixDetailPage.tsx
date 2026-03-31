@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Copy, Check } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { VisibilityBar } from '../../components/ui/VisibilityBar';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
@@ -32,6 +32,7 @@ export function FixDetailPage() {
   const [activeTab, setActiveTab] = useState<'preview' | 'diff'>('preview');
   const [rejectConfirm, setRejectConfirm] = useState(false);
   const [applyError, setApplyError] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const { data: fix, isLoading } = useFix(id ?? '');
   const approveMutation = useApproveFix();
@@ -78,9 +79,59 @@ export function FixDetailPage() {
     );
   }
 
-  const isApplied = data.status === 'applied' || approveMutation.isSuccess;
+  // Schema, FAQ, and listing fixes cannot be auto-applied via API.
+  // The backend marks them as "manual" — the merchant must paste the content manually.
+  const isManualFix = ['schema', 'faq', 'listing'].includes(data.fix_type);
+
+  const isApplied = data.status === 'applied' || (!isManualFix && approveMutation.isSuccess);
+  const isMarkedManual = data.status === 'manual' || (isManualFix && approveMutation.isSuccess);
   const isRejected = data.status === 'rejected' || rejectMutation.isSuccess;
   const isApplying = approveMutation.isPending;
+
+  // Copy generated content to clipboard
+  function handleCopy() {
+    const content =
+      typeof data.generated.body === 'string'
+        ? data.generated.body
+        : JSON.stringify(data.generated, null, 2);
+    navigator.clipboard.writeText(content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  // Manual fix instructions per type
+  const MANUAL_INSTRUCTIONS: Record<string, { steps: string[]; destination: string }> = {
+    schema: {
+      destination: 'Shopify admin → Online Store → Themes → Edit code → product.liquid (or sections/main-product.liquid)',
+      steps: [
+        'Copy the JSON-LD above using the Copy button',
+        'In Shopify admin, go to Online Store → Themes → Edit code',
+        'Open product.liquid or sections/main-product.liquid',
+        'Paste the <script type="application/ld+json"> block before </body>',
+        'Save and click "Mark as Done" below',
+      ],
+    },
+    faq: {
+      destination: 'Your storefront — add as a FAQ page or FAQ section on product pages',
+      steps: [
+        'Copy the FAQ content above',
+        'In Shopify admin, create a new Page titled "FAQ" (or add to existing)',
+        'Paste the Q&A pairs as formatted content',
+        'Optionally add the page to your navigation menu',
+        'Save and click "Mark as Done" below',
+      ],
+    },
+    listing: {
+      destination: 'External directories — Google Business Profile, Yelp, industry directories',
+      steps: [
+        'Copy the listing description above',
+        'Submit to the directory links provided in the content',
+        'Use the description as your standard brand bio across all listings',
+        'Click "Mark as Done" once you\'ve submitted to at least one directory',
+      ],
+    },
+  };
 
   return (
     <div className="pb-20 md:pb-0">
@@ -332,7 +383,7 @@ export function FixDetailPage() {
             </div>
           </div>
 
-          {/* Action buttons */}
+          {/* Action panel */}
           <div
             className="rounded-[6px] p-4 space-y-2"
             style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
@@ -341,22 +392,38 @@ export function FixDetailPage() {
               <div className="text-center py-4">
                 <p className="text-[32px] mb-2">✓</p>
                 <p className="font-medium" style={{ color: '#00D4FF' }}>
-                  This fix has been applied to your store
+                  Applied to your store
                 </p>
                 <p className="text-[12px] mt-1" style={{ color: '#64748B' }}>
-                  Applied on {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                 </p>
+              </div>
+            ) : isMarkedManual ? (
+              <div className="py-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[13px] font-medium" style={{ color: '#F59E0B' }}>
+                    ✓ Marked as done — manual steps required
+                  </span>
+                </div>
+                <p className="text-[12px] mb-3" style={{ color: '#64748B' }}>
+                  This change needs to be added to your store manually. Follow the steps below.
+                </p>
+                {MANUAL_INSTRUCTIONS[data.fix_type] && (
+                  <div className="space-y-1.5">
+                    {MANUAL_INSTRUCTIONS[data.fix_type].steps.map((step, i) => (
+                      <div key={i} className="flex items-start gap-2 text-[12px]">
+                        <span className="font-mono flex-shrink-0 mt-0.5" style={{ color: '#F59E0B' }}>
+                          {i + 1}.
+                        </span>
+                        <span style={{ color: '#94a3b8' }}>{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : isRejected ? (
               <div className="text-center py-4">
                 <p className="font-medium" style={{ color: '#64748B' }}>This fix was dismissed</p>
-                <button
-                  className="text-[13px] mt-2"
-                  style={{ color: '#00D4FF' }}
-                  onClick={() => setRejectConfirm(false)}
-                >
-                  Restore fix
-                </button>
               </div>
             ) : rejectConfirm ? (
               <div>
@@ -381,7 +448,85 @@ export function FixDetailPage() {
                   </button>
                 </div>
               </div>
+            ) : isManualFix ? (
+              /* Manual fix flow: copy content + step-by-step instructions */
+              <>
+                <div
+                  className="rounded-[6px] p-3 mb-2"
+                  style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}
+                >
+                  <p className="text-[12px] font-medium mb-1" style={{ color: '#F59E0B' }}>
+                    Manual action required
+                  </p>
+                  <p className="text-[11px]" style={{ color: '#94a3b8' }}>
+                    This fix can't be auto-applied. Copy the generated content and add it to your store manually.
+                  </p>
+                  {MANUAL_INSTRUCTIONS[data.fix_type] && (
+                    <p className="text-[11px] mt-1.5" style={{ color: '#64748B' }}>
+                      Where: {MANUAL_INSTRUCTIONS[data.fix_type].destination}
+                    </p>
+                  )}
+                </div>
+
+                {/* Steps */}
+                {MANUAL_INSTRUCTIONS[data.fix_type] && (
+                  <div className="space-y-1.5 mb-3">
+                    {MANUAL_INSTRUCTIONS[data.fix_type].steps.slice(0, -1).map((step, i) => (
+                      <div key={i} className="flex items-start gap-2 text-[12px]">
+                        <span className="font-mono flex-shrink-0 mt-0.5" style={{ color: '#64748B' }}>
+                          {i + 1}.
+                        </span>
+                        <span style={{ color: '#94a3b8' }}>{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleCopy}
+                  className="w-full font-medium text-[14px] flex items-center justify-center gap-2 transition-all hover:brightness-110"
+                  style={{
+                    background: copied ? 'rgba(0,212,255,0.15)' : '#00D4FF',
+                    color: copied ? '#00D4FF' : '#0A0A0B',
+                    height: 44,
+                    borderRadius: 6,
+                    border: copied ? '1px solid rgba(0,212,255,0.4)' : 'none',
+                  }}
+                >
+                  {copied ? <Check size={15} /> : <Copy size={15} />}
+                  {copied ? 'Copied to clipboard' : 'Copy Generated Content'}
+                </button>
+
+                <button
+                  onClick={handleApply}
+                  disabled={isApplying}
+                  className="w-full py-2.5 text-[13px] font-medium transition-all hover:brightness-110"
+                  style={{
+                    background: 'rgba(245,158,11,0.1)',
+                    color: '#F59E0B',
+                    borderRadius: 6,
+                    border: '1px solid rgba(245,158,11,0.2)',
+                    opacity: isApplying ? 0.7 : 1,
+                  }}
+                >
+                  {isApplying ? 'Saving...' : "Mark as Done (I've added it manually)"}
+                </button>
+
+                {applyError && (
+                  <p className="text-[12px] text-center" style={{ color: '#EF4444' }}>
+                    {applyError}
+                  </p>
+                )}
+                <button
+                  onClick={() => setRejectConfirm(true)}
+                  className="w-full py-2 text-[12px] transition-colors hover:text-white"
+                  style={{ color: '#475569' }}
+                >
+                  Reject Fix
+                </button>
+              </>
             ) : (
+              /* Auto-apply flow: description only */
               <>
                 <button
                   onClick={handleApply}
@@ -405,7 +550,7 @@ export function FixDetailPage() {
                   )}
                 </button>
                 <p className="text-center text-[11px]" style={{ color: '#64748B' }}>
-                  Pushes this change directly to your Shopify product
+                  Pushes this change directly to your Shopify product description
                 </p>
                 {applyError && (
                   <p className="text-[12px] text-center" style={{ color: '#EF4444' }}>
