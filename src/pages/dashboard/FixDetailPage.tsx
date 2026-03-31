@@ -2,29 +2,8 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Copy, Check } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { VisibilityBar } from '../../components/ui/VisibilityBar';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { useFix, useApproveFix, useRejectFix, useMerchant, useSchemaStatus } from '../../hooks/useApi';
-
-const MOCK_FIX = {
-  id: '1',
-  fix_type: 'description' as const,
-  priority: 'high' as const,
-  title: 'Rewrite leather wallet product description',
-  explanation: 'Your description is 210 words. AI-cited competitors average 884 words. Expanding with FAQ content and semantic keywords will significantly increase your citation rate across ChatGPT, Perplexity, and Gemini.',
-  original: {
-    body: `The Oakwood Heritage Wallet is crafted from full-grain leather. Features 6 card slots and a bill compartment. Available in brown and black. Handmade in the USA.`,
-    word_count: 28,
-  },
-  generated: {
-    body: `Introducing the Oakwood Heritage Wallet — handcrafted from full-grain vegetable-tanned leather sourced from sustainable tanneries in the American Midwest. Each wallet is hand-stitched by our artisans in Portland, Oregon, using waxed linen thread that strengthens with every use.\n\nBuilt to last decades, not seasons. The Heritage Wallet features:\n• 6 card slots (expands to hold 8-10 cards comfortably)\n• Full-length bill compartment for organized cash storage\n• 1 secure ID window with crystal-clear acetate\n• Slim profile: 8mm when empty, 12mm fully loaded\n• Full-grain leather that develops a rich patina over time\n\nWhy choose full-grain leather? Unlike top-grain or bonded leather, full-grain retains the natural fiber structure for superior durability. Your wallet will look better at year 5 than it did on day one.\n\nAvailable in Cognac Brown, Saddle Black, and Natural Tan. Each color is dyed using traditional methods that allow the leather's natural character to show through.\n\nDimensions: 4.4" × 3.5" × 0.3" (empty)\nWeight: 2.1 oz\nMade in Portland, Oregon, USA\n30-day satisfaction guarantee. Free shipping over $75.`,
-    word_count: 198,
-  },
-  est_impact: 23,
-  status: 'pending' as const,
-  target_gid: 'gid://shopify/Product/1',
-  created_at: '2026-03-01T00:00:00Z',
-};
 
 export function FixDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -40,8 +19,6 @@ export function FixDetailPage() {
   const { data: schemaStatus } = useSchemaStatus();
   const approveMutation = useApproveFix();
   const rejectMutation = useRejectFix();
-
-  const data = fix ?? MOCK_FIX;
 
   async function handleApply() {
     setApplyError('');
@@ -81,6 +58,25 @@ export function FixDetailPage() {
       </div>
     );
   }
+
+  if (!fix) {
+    return (
+      <div className="pb-20 md:pb-0">
+        <button
+          onClick={() => navigate('/dashboard/fixes')}
+          className="flex items-center gap-1.5 text-[13px] mb-4 transition-colors hover:text-white"
+          style={{ color: '#64748B' }}
+        >
+          <ArrowLeft size={14} /> Back to fixes
+        </button>
+        <div className="text-center py-20" style={{ color: '#64748B' }}>
+          <p className="text-[14px]">Fix not found</p>
+        </div>
+      </div>
+    );
+  }
+
+  const data = fix;
 
   // Schema, FAQ, and listing fixes cannot be auto-applied via API.
   // The backend marks them as "manual" — the merchant must paste the content manually.
@@ -207,7 +203,7 @@ export function FixDetailPage() {
                       {typeof data.original.body === 'string' ? data.original.body : JSON.stringify(data.original, null, 2)}
                     </div>
                     <p className="text-[11px] mt-2" style={{ color: '#64748B' }}>
-                      {typeof data.original.word_count === 'number' ? data.original.word_count : 28} words
+                      {typeof data.original.word_count === 'number' ? `${data.original.word_count} words` : ''}
                     </p>
                   </div>
 
@@ -231,11 +227,11 @@ export function FixDetailPage() {
                         : JSON.stringify(data.generated, null, 2)}
                     </div>
                     <p className="text-[11px] mt-2" style={{ color: '#00D4FF' }}>
-                      {typeof data.generated.word_count === 'number' ? data.generated.word_count : 198} words (
-                      {typeof data.original.word_count === 'number' && typeof data.generated.word_count === 'number'
-                        ? `+${data.generated.word_count - data.original.word_count}`
-                        : '+170'}
-                      )
+                      {typeof data.generated.word_count === 'number' && typeof data.original.word_count === 'number'
+                        ? `${data.generated.word_count} words (+${data.generated.word_count - data.original.word_count})`
+                        : typeof data.generated.word_count === 'number'
+                        ? `${data.generated.word_count} words`
+                        : ''}
                     </p>
                   </div>
                 </div>
@@ -245,32 +241,25 @@ export function FixDetailPage() {
                 className="font-mono text-[13px] leading-relaxed overflow-y-auto rounded-[6px]"
                 style={{ maxHeight: 400, background: '#0d0d10', padding: '12px' }}
               >
-                {/* Mock diff lines */}
-                {[
-                  { type: 'remove', text: '− The Oakwood Heritage Wallet is crafted from full-grain leather.' },
-                  { type: 'remove', text: '− Features 6 card slots and a bill compartment.' },
-                  { type: 'remove', text: '− Available in brown and black. Handmade in the USA.' },
-                  { type: 'add', text: '+ Introducing the Oakwood Heritage Wallet — handcrafted from full-grain' },
-                  { type: 'add', text: '+  vegetable-tanned leather sourced from sustainable tanneries in the' },
-                  { type: 'add', text: '+  American Midwest.' },
-                  { type: 'add', text: '+ ' },
-                  { type: 'add', text: '+ Built to last decades, not seasons. The Heritage Wallet features:' },
-                  { type: 'add', text: '+ • 6 card slots (expands to hold 8-10 cards comfortably)' },
-                  { type: 'add', text: '+ • Full-length bill compartment for organized cash storage' },
-                  { type: 'add', text: '+ • 1 secure ID window with crystal-clear acetate' },
-                ].map((line, i) => (
-                  <div
-                    key={i}
-                    className="py-0.5 px-2 rounded-[2px] mb-0.5"
-                    style={{
-                      background: line.type === 'remove' ? '#1a0000' : line.type === 'add' ? '#001a00' : 'transparent',
-                      borderLeft: line.type === 'remove' ? '2px solid #EF4444' : line.type === 'add' ? '2px solid #22c55e' : '2px solid transparent',
-                      color: line.type === 'remove' ? '#EF4444aa' : line.type === 'add' ? '#86efacaa' : '#64748B',
-                    }}
-                  >
-                    {line.text}
-                  </div>
-                ))}
+                {(() => {
+                  const originalText = typeof data.original.body === 'string' ? data.original.body : JSON.stringify(data.original, null, 2);
+                  const generatedText = typeof data.generated.body === 'string' ? data.generated.body : JSON.stringify(data.generated, null, 2);
+                  const removed = originalText.split('\n').filter(l => l.trim()).map(l => ({ type: 'remove' as const, text: `− ${l}` }));
+                  const added = generatedText.split('\n').filter(l => l.trim()).map(l => ({ type: 'add' as const, text: `+ ${l}` }));
+                  return [...removed, ...added].map((line, i) => (
+                    <div
+                      key={i}
+                      className="py-0.5 px-2 rounded-[2px] mb-0.5"
+                      style={{
+                        background: line.type === 'remove' ? '#1a0000' : '#001a00',
+                        borderLeft: line.type === 'remove' ? '2px solid #EF4444' : '2px solid #22c55e',
+                        color: line.type === 'remove' ? '#EF4444aa' : '#86efacaa',
+                      }}
+                    >
+                      {line.text}
+                    </div>
+                  ));
+                })()}
               </div>
             )}
           </div>
@@ -284,29 +273,9 @@ export function FixDetailPage() {
             style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
           >
             <p className="font-medium text-white text-[14px] mb-2">Why this fix?</p>
-            <p className="text-[13px] mb-4" style={{ color: '#94a3b8' }}>
+            <p className="text-[13px]" style={{ color: '#94a3b8' }}>
               {data.explanation}
             </p>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: 'Your avg', value: '210 words', color: '#EF4444' },
-                { label: 'Cited brands avg', value: '884 words', color: '#00D4FF' },
-                { label: 'Gap', value: '674 words', color: '#F59E0B' },
-              ].map((sig) => (
-                <div
-                  key={sig.label}
-                  className="rounded-[6px] p-2.5 text-center"
-                  style={{ background: '#0d0d10', border: `1px solid ${sig.color}22` }}
-                >
-                  <p className="font-mono font-bold text-[14px]" style={{ color: sig.color }}>
-                    {sig.value}
-                  </p>
-                  <p className="text-[10px] mt-0.5" style={{ color: '#64748B' }}>
-                    {sig.label}
-                  </p>
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* Estimated impact */}
@@ -328,18 +297,7 @@ export function FixDetailPage() {
                   left: 0,
                   top: 0,
                   bottom: 0,
-                  width: '8%',
-                  background: '#64748B',
-                  borderRadius: 4,
-                }}
-              />
-              <div
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: `${8 + data.est_impact}%`,
+                  width: `${Math.min(data.est_impact, 100)}%`,
                   background: 'linear-gradient(90deg, #00D4FF44, #00D4FF)',
                   borderRadius: 4,
                   opacity: 0.6,
@@ -347,39 +305,8 @@ export function FixDetailPage() {
               />
             </div>
             <div className="flex justify-between text-[11px] mt-1 font-mono" style={{ color: '#64748B' }}>
-              <span>Current: 8%</span>
-              <span style={{ color: '#00D4FF' }}>Projected: {8 + data.est_impact}%</span>
-            </div>
-          </div>
-
-          {/* Platform impact */}
-          <div
-            className="rounded-[6px] p-4"
-            style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
-          >
-            <p className="font-medium text-white text-[14px] mb-3">Platform impact</p>
-            <div className="space-y-2.5">
-              <div>
-                <div className="flex justify-between text-[12px] mb-1">
-                  <span style={{ color: '#64748B' }}>ChatGPT</span>
-                  <span className="font-mono" style={{ color: '#00D4FF' }}>+18%</span>
-                </div>
-                <VisibilityBar score={18} platform="chatgpt" />
-              </div>
-              <div>
-                <div className="flex justify-between text-[12px] mb-1">
-                  <span style={{ color: '#64748B' }}>Perplexity</span>
-                  <span className="font-mono" style={{ color: '#A78BFA' }}>+28%</span>
-                </div>
-                <VisibilityBar score={28} platform="perplexity" />
-              </div>
-              <div>
-                <div className="flex justify-between text-[12px] mb-1">
-                  <span style={{ color: '#64748B' }}>Gemini</span>
-                  <span className="font-mono" style={{ color: '#F59E0B' }}>+14%</span>
-                </div>
-                <VisibilityBar score={14} platform="gemini" />
-              </div>
+              <span>Estimated boost</span>
+              <span style={{ color: '#00D4FF' }}>+{data.est_impact}%</span>
             </div>
           </div>
 
@@ -388,7 +315,41 @@ export function FixDetailPage() {
             className="rounded-[6px] p-4 space-y-2"
             style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
           >
-            {isApplied ? (
+            {isApplied && data.fix_type === 'schema' ? (
+              <div className="py-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ background: schemaStatus?.active ? '#22c55e' : '#F59E0B' }}
+                  />
+                  <span className="text-[13px] font-medium" style={{ color: schemaStatus?.active ? '#22c55e' : '#F59E0B' }}>
+                    {schemaStatus?.active
+                      ? 'Schema live on your storefront'
+                      : 'JSON-LD stored — enable app block to go live'}
+                  </span>
+                </div>
+                {schemaStatus?.active ? (
+                  <p className="text-[12px]" style={{ color: '#64748B' }}>
+                    Your JSON-LD is rendering in the page &lt;head&gt;. The next scan will measure the impact on AI citations.
+                  </p>
+                ) : (
+                  <div className="space-y-1 mt-2">
+                    <p className="text-[12px]" style={{ color: '#64748B' }}>
+                      JSON-LD stored ✓ — now enable the app block so it renders on your storefront:
+                    </p>
+                    <a
+                      href={themeEditorUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[12px] underline"
+                      style={{ color: '#00D4FF' }}
+                    >
+                      Open Theme Customizer → App embeds → GEO Visibility Schema →
+                    </a>
+                  </div>
+                )}
+              </div>
+            ) : isApplied ? (
               <div className="text-center py-4">
                 <p className="text-[32px] mb-2">✓</p>
                 <p className="font-medium" style={{ color: '#00D4FF' }}>

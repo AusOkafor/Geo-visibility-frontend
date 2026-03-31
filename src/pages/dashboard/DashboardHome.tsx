@@ -84,18 +84,6 @@ function useScanProgress(active: boolean) {
   return SCAN_STAGES[stageIdx]?.label ?? 'Scanning…';
 }
 
-// ─── mock data shown before first scan ───────────────────────────────────────
-// Gives the chart a meaningful shape instead of an empty box.
-const MOCK_DAILY: DailyScore[] = Array.from({ length: 30 }, (_, i) => {
-  const d = new Date('2026-02-28');
-  d.setDate(d.getDate() + i);
-  return {
-    date: d.toISOString().slice(0, 10),
-    chatgpt: Math.max(0, 5 + Math.round((Math.random() - 0.5) * 8)),
-    perplexity: Math.max(0, 18 + Math.round((Math.random() - 0.5) * 10) + Math.floor(i / 6)),
-    gemini: Math.max(0, 4 + Math.round((Math.random() - 0.5) * 6)),
-  };
-});
 
 // ─── chart tooltip ───────────────────────────────────────────────────────────
 
@@ -147,16 +135,7 @@ export function DashboardHome() {
   const gemini = scores?.find((s) => s.platform === 'gemini');
   // isMockChart = true only when there is zero real scan data at all
   const isMockChart = !daily?.length;
-  // Blend mock data for past days with real scan data so the chart always
-  // has shape. Once there are 7+ real days, switch to real data only.
-  const chartData: DailyScore[] = (() => {
-    if (!daily?.length) return MOCK_DAILY;
-    if (daily.length >= 7) return daily;
-    // Prepend mock days that come before the first real scan date
-    const firstReal = daily[0].date;
-    const mockPrefix = MOCK_DAILY.filter((d) => d.date < firstReal);
-    return [...mockPrefix, ...daily];
-  })();
+  const chartData: DailyScore[] = daily ?? [];
   const pendingFixes = fixes ?? [];
   const compList = competitors ?? [];
   const dailyArr = daily ?? [];

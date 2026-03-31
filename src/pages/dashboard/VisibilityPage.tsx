@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, Legend,
-  ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell,
+  ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
@@ -16,25 +16,6 @@ const PLATFORM_COLORS: Record<Platform, string> = {
   perplexity: '#A78BFA',
   gemini: '#F59E0B',
 };
-
-const MOCK_DAILY_DATA = Array.from({ length: 30 }, (_, i) => {
-  const d = new Date('2026-02-25');
-  d.setDate(d.getDate() + i);
-  return {
-    date: d.toISOString().slice(0, 10),
-    chatgpt: Math.max(1, 8 + Math.round((Math.random() - 0.5) * 6)),
-    perplexity: Math.max(1, 21 + Math.round((Math.random() - 0.5) * 8) + Math.floor(i / 5)),
-    gemini: Math.max(1, 5 + Math.round((Math.random() - 0.5) * 4)),
-  };
-});
-
-const DIST_BUCKETS = [
-  { label: '0–10%', count: 3 },
-  { label: '11–25%', count: 1 },
-  { label: '26–50%', count: 0 },
-  { label: '51–75%', count: 0 },
-  { label: '76–100%', count: 0 },
-];
 
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -55,7 +36,6 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export function VisibilityPage() {
   const [range, setRange] = useState<Range>('30d');
-  const [distPlatform, setDistPlatform] = useState<Platform>('chatgpt');
   const days = RANGE_DAYS[range];
 
   const { data: scores, isLoading: scoresLoading } = useVisibilityScores(days);
@@ -64,7 +44,7 @@ export function VisibilityPage() {
   const { data: aiReadiness } = useAIReadiness();
   const { data: liveAnswers } = useLiveAnswers(10);
 
-  const chartData = (daily?.length ?? 0) >= 2 ? daily! : MOCK_DAILY_DATA;
+  const chartData = daily ?? [];
   const isRealChart = (daily?.length ?? 0) >= 2;
 
   // Calculate per-platform delta: last entry score minus first entry score
@@ -120,9 +100,9 @@ export function VisibilityPage() {
             ))
           : (['chatgpt', 'perplexity', 'gemini'] as Platform[]).map((platform) => {
               const s = scores?.find((sc) => sc.platform === platform);
-              const score = s?.score ?? (platform === 'chatgpt' ? 8 : platform === 'perplexity' ? 21 : 5);
-              const hit = s?.queries_hit ?? (platform === 'perplexity' ? 21 : platform === 'chatgpt' ? 8 : 5);
-              const run = s?.queries_run ?? 100;
+              const score = s?.score ?? null;
+              const hit = s?.queries_hit ?? null;
+              const run = s?.queries_run ?? null;
               const color = PLATFORM_COLORS[platform];
               return (
                 <div
@@ -137,15 +117,15 @@ export function VisibilityPage() {
                     </span>
                   </div>
                   <p className="font-mono font-bold text-[40px] text-white leading-none mb-2">
-                    {score}%
+                    {score !== null ? `${score}%` : '—'}
                   </p>
                   <p className="text-[12px] mb-3" style={{ color: '#64748B' }}>
-                    Cited in {hit} of {run} daily queries
+                    {hit !== null && run !== null ? `Cited in ${hit} of ${run} daily queries` : 'No scan data yet'}
                   </p>
                   <div className="rounded-full overflow-hidden mb-2" style={{ height: 4, background: '#1a1a1f' }}>
                     <div
                       className="h-full rounded-full"
-                      style={{ width: `${score}%`, background: `linear-gradient(90deg, ${color}44, ${color})` }}
+                      style={{ width: score !== null ? `${score}%` : '0%', background: `linear-gradient(90deg, ${color}44, ${color})` }}
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -245,60 +225,6 @@ export function VisibilityPage() {
           </div>
         </div>
       )}
-
-      {/* Distribution */}
-      <div
-        className="rounded-[6px] p-5"
-        style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <p className="font-medium text-white text-[15px]">
-            Score distribution — {distPlatform === 'chatgpt' ? 'ChatGPT' : distPlatform === 'perplexity' ? 'Perplexity' : 'Gemini'}
-          </p>
-          <div
-            className="flex rounded-[6px] overflow-hidden"
-            style={{ border: '1px solid rgba(255,255,255,0.1)' }}
-          >
-            {(['chatgpt', 'perplexity', 'gemini'] as Platform[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => setDistPlatform(p)}
-                className="px-3 py-1 text-[11px] capitalize transition-colors"
-                style={{
-                  background: distPlatform === p ? PLATFORM_COLORS[p] + '33' : 'transparent',
-                  color: distPlatform === p ? PLATFORM_COLORS[p] : '#64748B',
-                  borderRight: p !== 'gemini' ? '1px solid rgba(255,255,255,0.08)' : 'none',
-                }}
-              >
-                {p === 'chatgpt' ? 'ChatGPT' : p === 'perplexity' ? 'Perplexity' : 'Gemini'}
-              </button>
-            ))}
-          </div>
-        </div>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={DIST_BUCKETS} margin={{ top: 4, right: 0, left: -24, bottom: 0 }}>
-            <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748B' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'Space Mono' }} axisLine={false} tickLine={false} />
-            <Tooltip
-              contentStyle={{ background: '#1a1a1f', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6 }}
-              labelStyle={{ color: '#94a3b8', fontSize: 12 }}
-              itemStyle={{ color: PLATFORM_COLORS[distPlatform], fontSize: 12 }}
-            />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-              {DIST_BUCKETS.map((_, i) => (
-                <Cell key={i} fill={PLATFORM_COLORS[distPlatform]} fillOpacity={0.7} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-        <div
-          className="mt-4 p-3 rounded-[6px] text-[13px]"
-          style={{ borderLeft: '2px solid #00D4FF', background: '#001a2266', color: '#94a3b8' }}
-        >
-          Most of your queries score below 10% — focus on the 'description' fix to move into the 11–25% bucket.
-        </div>
-      </div>
 
       {/* AI Readiness — 3-bucket diagnosis */}
       {aiReadiness && (

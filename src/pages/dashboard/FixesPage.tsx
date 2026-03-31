@@ -300,14 +300,6 @@ function AuthorityGuidanceCard() {
         </div>
 
         <div className="flex flex-col items-end justify-start gap-2 flex-shrink-0 min-w-[130px]">
-          <div className="text-right">
-            <p className="font-mono font-bold text-[20px]" style={{ color: '#F59E0B' }}>
-              +15%
-            </p>
-            <p className="text-[10px]" style={{ color: '#64748B' }}>
-              estimated visibility gain
-            </p>
-          </div>
           <span
             className="text-[11px] px-2 py-1 rounded w-full text-center"
             style={{
