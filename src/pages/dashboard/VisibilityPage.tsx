@@ -64,7 +64,22 @@ export function VisibilityPage() {
   const { data: aiReadiness } = useAIReadiness();
   const { data: liveAnswers } = useLiveAnswers(10);
 
-  const chartData = daily?.length ? daily : MOCK_DAILY_DATA;
+  const chartData = (daily?.length ?? 0) >= 2 ? daily! : MOCK_DAILY_DATA;
+  const isRealChart = (daily?.length ?? 0) >= 2;
+
+  // Calculate per-platform delta: last entry score minus first entry score
+  const platformDeltas: Record<Platform, number | null> = {
+    chatgpt: null,
+    perplexity: null,
+    gemini: null,
+  };
+  if (isRealChart && daily) {
+    const first = daily[0];
+    const last = daily[daily.length - 1];
+    (['chatgpt', 'perplexity', 'gemini'] as Platform[]).forEach((p) => {
+      platformDeltas[p] = (last[p] ?? 0) - (first[p] ?? 0);
+    });
+  }
 
   return (
     <div className="pb-20 md:pb-0">
@@ -134,12 +149,16 @@ export function VisibilityPage() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px]" style={{ color: '#00D4FF' }}>
-                      ↑ 4% vs last {range}
-                    </span>
-                    <span className="text-[11px]" style={{ color: '#64748B' }}>
-                      Industry avg: 18%
-                    </span>
+                    {isRealChart && platformDeltas[platform] !== null ? (
+                      <span
+                        className="text-[11px]"
+                        style={{ color: platformDeltas[platform]! >= 0 ? '#00D4FF' : '#EF4444' }}
+                      >
+                        {platformDeltas[platform]! >= 0 ? '↑' : '↓'} {Math.abs(platformDeltas[platform]!)}% vs {range} ago
+                      </span>
+                    ) : (
+                      <span className="text-[11px]" style={{ color: '#64748B' }}>First scan</span>
+                    )}
                   </div>
                 </div>
               );
@@ -151,24 +170,41 @@ export function VisibilityPage() {
         className="rounded-[6px] p-5 mb-6"
         style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
       >
-        <p className="font-medium text-white text-[15px] mb-4">
-          Visibility over time — {range}
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="font-medium text-white text-[15px]">
+            Visibility over time — {range}
+          </p>
+          {!isRealChart && !dailyLoading && (
+            <span className="text-[11px] px-2 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.04)', color: '#475569' }}>
+              preview — run more scans to build history
+            </span>
+          )}
+        </div>
         {dailyLoading ? (
           <LoadingSkeleton height="260px" />
         ) : (
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={chartData} margin={{ top: 4, right: 16, left: -24, bottom: 0 }}>
-              <CartesianGrid stroke="rgba(255,255,255,0.04)" />
-              <XAxis dataKey="date" tickFormatter={(d, i) => (i % 5 === 0 ? formatDate(d) : '')} tick={{ fontSize: 11, fill: '#64748B' }} axisLine={false} tickLine={false} />
-              <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'Space Mono' }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ paddingTop: 12, fontSize: 12 }} iconType="circle" iconSize={8} />
-              <Line type="monotone" dataKey="chatgpt" name="ChatGPT" stroke="#00D4FF" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
-              <Line type="monotone" dataKey="perplexity" name="Perplexity" stroke="#A78BFA" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
-              <Line type="monotone" dataKey="gemini" name="Gemini" stroke="#F59E0B" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="relative">
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={chartData} margin={{ top: 4, right: 16, left: -24, bottom: 0 }}>
+                <CartesianGrid stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="date" tickFormatter={(d, i) => (i % 5 === 0 ? formatDate(d) : '')} tick={{ fontSize: 11, fill: '#64748B' }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'Space Mono' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend wrapperStyle={{ paddingTop: 12, fontSize: 12 }} iconType="circle" iconSize={8} />
+                <Line type="monotone" dataKey="chatgpt" name="ChatGPT" stroke="#00D4FF" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                <Line type="monotone" dataKey="perplexity" name="Perplexity" stroke="#A78BFA" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                <Line type="monotone" dataKey="gemini" name="Gemini" stroke="#F59E0B" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+            {!isRealChart && (
+              <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(10,10,11,0.6)', backdropFilter: 'blur(2px)' }}>
+                <p className="text-[13px] text-center px-4" style={{ color: '#64748B' }}>
+                  Trend data builds after multiple scans.<br />
+                  <span style={{ color: '#475569' }}>Check back after your next scan runs.</span>
+                </p>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
