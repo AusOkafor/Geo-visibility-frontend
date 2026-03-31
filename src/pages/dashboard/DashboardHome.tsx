@@ -118,6 +118,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 // ─── component ───────────────────────────────────────────────────────────────
 
 export function DashboardHome() {
+  // Auto-dismiss welcome once real scan data exists
   const [welcomeDismissed, setWelcomeDismissed] = useState(
     () => localStorage.getItem('welcome_dismissed') === 'true'
   );
@@ -341,7 +342,7 @@ export function DashboardHome() {
           <button onClick={() => setScanDone(false)}><X size={14} style={{ color: '#64748B' }} /></button>
         </div>
       )}
-      {!welcomeDismissed && !scanActive && !scanDone && (
+      {!welcomeDismissed && !scanActive && !scanDone && isMockChart && (
         <div className="flex items-start justify-between rounded-[6px] p-4 mb-4" style={{ background: '#111113', border: '1px solid rgba(0,212,255,0.2)', borderLeftWidth: 3, borderLeftColor: '#00D4FF' }}>
           <div>
             <p className="font-medium text-white text-[14px] mb-1">Welcome to GeoVisibility, {localStorage.getItem('settings_brand_name') || merchant?.brand_name || 'your store'}</p>
@@ -446,14 +447,14 @@ export function DashboardHome() {
         <div className="rounded-[8px] p-5 mb-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
           <p className="text-[14px] font-semibold text-white mb-1">Your visibility pipeline</p>
           <p className="text-[12px] mb-4" style={{ color: '#64748B' }}>{pipeline.message}</p>
-          <div className="flex items-center gap-0">
+          <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${pipeline.steps.length}, 1fr)` }}>
             {pipeline.steps.map((step, i) => {
               const isLast = i === pipeline.steps.length - 1;
               return (
-                <div key={step.stage} className="flex items-center flex-1 min-w-0">
-                  <div className="flex flex-col items-center flex-shrink-0">
+                <div key={step.stage} className="flex flex-col items-center">
+                  <div className="flex items-center w-full">
                     <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold"
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 mx-auto"
                       style={{
                         background: step.done ? '#00D4FF18' : 'rgba(255,255,255,0.04)',
                         border: `1.5px solid ${step.done ? '#00D4FF' : 'rgba(255,255,255,0.1)'}`,
@@ -462,11 +463,11 @@ export function DashboardHome() {
                     >
                       {step.done ? '✓' : step.stage}
                     </div>
-                    <p className="text-[10px] mt-1.5 text-center leading-tight max-w-[72px]" style={{ color: step.done ? '#94a3b8' : '#475569', wordBreak: 'break-word' }}>{step.name}</p>
+                    {!isLast && (
+                      <div className="flex-1 h-px" style={{ background: step.done ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.06)' }} />
+                    )}
                   </div>
-                  {!isLast && (
-                    <div className="flex-1 h-px mx-1 mb-4" style={{ background: step.done ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.06)' }} />
-                  )}
+                  <p className="text-[10px] mt-2 text-center leading-tight px-1" style={{ color: step.done ? '#94a3b8' : '#475569' }}>{step.name}</p>
                 </div>
               );
             })}
