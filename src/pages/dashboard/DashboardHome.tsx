@@ -119,7 +119,7 @@ export function DashboardHome() {
   const { data: merchant } = useMerchant();
   const { data: scores, isLoading: scoresLoading } = useVisibilityScores(30);
   const { data: daily, isLoading: dailyLoading } = useDailyScores(30);
-  const { data: fixes, isLoading: fixesLoading } = useFixes('pending');
+  const { data: fixes, isLoading: fixesLoading } = useFixes('');
   const { data: competitors, isLoading: compLoading } = useCompetitors();
   const { data: platformSources } = usePlatformSources();
   const { data: queryGaps, isLoading: gapsLoading } = useQueryGaps();
@@ -136,7 +136,9 @@ export function DashboardHome() {
   // isMockChart = true only when there is zero real scan data at all
   const isMockChart = !daily?.length;
   const chartData: DailyScore[] = daily ?? [];
-  const pendingFixes = fixes ?? [];
+  const allFixes = (fixes ?? []).filter((f) => f.status !== 'rejected');
+  const pendingFixes = allFixes.filter((f) => f.status === 'pending');
+  const appliedFixCount = allFixes.filter((f) => f.status === 'applied' || f.status === 'manual').length;
   const compList = competitors ?? [];
   const dailyArr = daily ?? [];
   const cgDelta = getPlatformDelta(dailyArr, 'chatgpt');
@@ -398,8 +400,24 @@ export function DashboardHome() {
             <MetricCard
               label="Pending Fixes"
               value={pendingFixes.length}
-              status={pendingFixes.length === 0 ? { label: 'All caught up', color: '#00D4FF' } : pendingFixes.filter(f => f.priority === 'high').length > 0 ? { label: `${pendingFixes.filter(f => f.priority === 'high').length} high priority`, color: '#EF4444' } : { label: 'Ready to apply', color: '#F59E0B' }}
-              subLabel={pendingFixes.filter(f => f.priority === 'high').length > 0 ? 'Blocking visibility — apply now' : pendingFixes.length > 0 ? 'Apply to improve citations' : undefined}
+              status={
+                pendingFixes.length === 0 && appliedFixCount > 0
+                  ? { label: `${appliedFixCount} applied`, color: '#00D4FF' }
+                  : pendingFixes.length === 0
+                  ? { label: 'All caught up', color: '#00D4FF' }
+                  : pendingFixes.filter(f => f.priority === 'high').length > 0
+                  ? { label: `${pendingFixes.filter(f => f.priority === 'high').length} high priority`, color: '#EF4444' }
+                  : { label: 'Ready to apply', color: '#F59E0B' }
+              }
+              subLabel={
+                appliedFixCount > 0 && pendingFixes.length > 0
+                  ? `${appliedFixCount} applied — apply now`
+                  : pendingFixes.filter(f => f.priority === 'high').length > 0
+                  ? 'Blocking visibility — apply now'
+                  : pendingFixes.length > 0
+                  ? 'Apply to improve citations'
+                  : undefined
+              }
             />
           </>
         )}
@@ -549,7 +567,9 @@ export function DashboardHome() {
               <p className="font-semibold text-white text-[15px]">What to fix right now</p>
               {pendingFixes.length > 0 && (
                 <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>
-                  {pendingFixes.filter(f => f.priority === 'high').length} action{pendingFixes.filter(f => f.priority === 'high').length !== 1 ? 's' : ''} blocking your AI visibility
+                  {appliedFixCount > 0
+                    ? `${appliedFixCount} applied • ${pendingFixes.length} remaining`
+                    : `${pendingFixes.filter(f => f.priority === 'high').length} action${pendingFixes.filter(f => f.priority === 'high').length !== 1 ? 's' : ''} blocking your AI visibility`}
                 </p>
               )}
             </div>
@@ -581,7 +601,7 @@ export function DashboardHome() {
                 className="flex items-center justify-center gap-2 w-full mt-4 py-3 rounded-[6px] text-[13px] font-bold transition-all hover:opacity-90"
                 style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: '#EF4444' }}
               >
-                Fix My Visibility — {pendingFixes.filter(f => f.priority === 'high').length} high-impact action{pendingFixes.filter(f => f.priority === 'high').length !== 1 ? 's' : ''}
+                Fix My Visibility — {pendingFixes.length} high-impact action{pendingFixes.length !== 1 ? 's' : ''}
               </Link>
             </>
           )}
