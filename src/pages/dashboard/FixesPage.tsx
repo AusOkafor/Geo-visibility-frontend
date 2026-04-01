@@ -1,22 +1,24 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { useFixes, useRejectFix, useQueryGaps, useVisibilityScores } from '../../hooks/useApi';
+import { useFixes, useRejectFix, useQueryGaps, useVisibilityScores, useMerchant, useCompetitors } from '../../hooks/useApi';
 import type { Fix, QueryGap } from '../../types';
 
 // Maps fix_layer → the 3-bucket problem frame shown on Visibility page
+// Order: content first (Get Found = FAQ + Description), then structure (Get Understood = Schema)
 const LAYER_META: Record<string, { label: string; sublabel: string; color: string }> = {
-  structure: {
-    label: 'Layer 1 — Get Understood',
-    sublabel: 'AI can\'t parse your catalog structure yet',
-    color: '#A78BFA',
-  },
   content: {
-    label: 'Layer 2 — Get Found',
-    sublabel: 'AI doesn\'t know your answers to buyer queries',
+    label: 'Layer 1 — Get Found',
+    sublabel: 'AI can\'t find answers for buyer queries on your site yet',
     color: '#00D4FF',
+  },
+  structure: {
+    label: 'Layer 2 — Get Understood',
+    sublabel: 'AI can\'t properly parse your brand and catalog',
+    color: '#A78BFA',
   },
   authority: {
     label: 'Layer 3 — Get Trusted',
@@ -24,12 +26,12 @@ const LAYER_META: Record<string, { label: string; sublabel: string; color: strin
     color: '#F59E0B',
   },
 };
-const LAYER_ORDER = ['structure', 'content', 'authority'] as const;
+const LAYER_ORDER = ['content', 'structure', 'authority'] as const;
 
 // Post-apply message per layer — shows what to do next
 const NEXT_STEP: Record<string, string> = {
-  structure: 'Structure indexed — apply content fixes next to target your query gaps',
-  content: 'Content updated — earn 1 external mention to become citable across all platforms',
+  content: 'Content live — apply the schema fix next so AI can parse your brand correctly',
+  structure: 'Schema applied — earn 1 external mention to become citable across all platforms',
   authority: 'Authority signal added — AI is more likely to cite you now',
 };
 
@@ -39,12 +41,14 @@ function FixCard({
   topGaps,
   currentCitations,
   queriesPerPlatform,
+  isStartHere,
 }: {
   fix: Fix;
   onDismiss: (id: string) => void;
   topGaps: QueryGap[];
   currentCitations: number;
   queriesPerPlatform: number;
+  isStartHere?: boolean;
 }) {
   const navigate = useNavigate();
   const layer = fix.fix_layer ?? 'content';
@@ -76,7 +80,15 @@ function FixCard({
             >
               {typeLabel}
             </span>
-            {fix.priority === 'high' && fix.status === 'pending' && (
+            {isStartHere && fix.status === 'pending' && (
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                style={{ background: 'rgba(0,212,255,0.12)', color: '#00D4FF', border: '1px solid rgba(0,212,255,0.25)' }}
+              >
+                ⚡ Start here
+              </span>
+            )}
+            {fix.priority === 'high' && fix.status === 'pending' && !isStartHere && (
               <span
                 className="text-[10px] px-1.5 py-0.5 rounded font-medium"
                 style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }}
@@ -178,12 +190,19 @@ function FixCard({
                 className="text-[13px] font-medium px-3 py-1.5 rounded w-full text-center transition-all hover:brightness-110"
                 style={{ background: '#00D4FF', color: '#0A0A0B', borderRadius: 6 }}
               >
-                Review & Apply
+                Apply Fix
+              </button>
+              <button
+                onClick={() => navigate(`/dashboard/fixes/${fix.id}`)}
+                className="text-[11px] transition-colors w-full text-center"
+                style={{ color: '#475569' }}
+              >
+                Preview
               </button>
               <button
                 onClick={() => onDismiss(fix.id)}
-                className="text-[12px] transition-colors"
-                style={{ color: '#64748B' }}
+                className="text-[11px] transition-colors"
+                style={{ color: '#334155' }}
               >
                 Dismiss
               </button>
@@ -220,95 +239,131 @@ function FixCard({
   );
 }
 
-// Static authority guidance card — shown when no authority fixes have been generated yet.
-// Authority can't be fully automated (it requires external mentions), so we give actionable steps.
-function AuthorityGuidanceCard() {
+// Authority guidance card — shown when no authority fixes have been generated yet.
+// Turns manual guidance into copy-ready execution tools so users can act immediately.
+function AuthorityGuidanceCard({
+  brandName,
+  topCompetitor,
+  topQuery,
+}: {
+  brandName: string;
+  topCompetitor: string;
+  topQuery: string;
+}) {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  function copyToClipboard(text: string, key: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(key);
+      setTimeout(() => setCopied(null), 2000);
+    });
+  }
+
+  const redditPost = `Hey r/jewelry!\n\nLooking for ${topQuery || 'fine jewelry'} recommendations — has anyone tried ${brandName}? They do 14K/18K gold pieces and I'm comparing them vs ${topCompetitor || 'other boutique brands'}. Curious about quality for the price point.\n\nAny experience with them?`;
+
+  const outreachEmail = `Subject: Quick addition for your "${topQuery || 'fine jewelry'}" article\n\nHi,\n\nI came across your piece on ${topQuery || 'fine jewelry brands'} and noticed ${brandName} wasn't included.\n\nWe offer fine jewelry in 14K/18K gold starting at $85 — specifically positioned for buyers searching for affordable luxury. Happy to share more details if you're ever updating the article.\n\nBest,\n[Your Name]\n${brandName}`;
+
   return (
     <div
       className="rounded-[6px] p-5"
       style={{ background: '#111113', border: '1px solid rgba(245,158,11,0.2)' }}
     >
-      <div className="flex gap-5">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <span
-              className="text-[11px] px-2 py-0.5 rounded"
-              style={{ border: '1px solid rgba(245,158,11,0.35)', color: '#F59E0B' }}
-            >
-              Citation Builder
-            </span>
-            <span
-              className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-              style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
-            >
-              Required to become citable
-            </span>
-          </div>
+      <div className="flex items-center gap-2 mb-3">
+        <span
+          className="text-[11px] px-2 py-0.5 rounded"
+          style={{ border: '1px solid rgba(245,158,11,0.35)', color: '#F59E0B' }}
+        >
+          Citation Builder
+        </span>
+        <span
+          className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+          style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
+        >
+          Required to become citable
+        </span>
+      </div>
 
-          <p className="font-medium text-white text-[15px] mb-1.5">
-            Get your brand cited in sources AI actually reads
-          </p>
-          <p className="text-[13px] leading-relaxed mb-3" style={{ color: '#64748B' }}>
-            Structure fixes alone won't get you recommended. AI platforms need to see your brand mentioned
-            externally — in directories, editorial lists, and community discussions — before they'll cite you.
-          </p>
+      <p className="font-medium text-white text-[15px] mb-1.5">
+        Get your brand cited in sources AI actually reads
+      </p>
+      <p className="text-[13px] mb-4" style={{ color: '#64748B' }}>
+        Structure fixes alone won't get you recommended. AI platforms need to see {brandName} mentioned
+        externally before they'll cite you. Use these to get your first mention today.
+      </p>
 
-          <div className="space-y-2">
-            {[
-              {
-                action: 'Submit to category directories & roundups',
-                example: 'Who What Wear, Refinery29, The Strategist "best of" lists',
-                effort: '1–2 hrs',
-              },
-              {
-                action: 'Reach out to authors of existing "best under $X" posts',
-                example: 'Find articles already ranking for your top query gaps and ask to be included',
-                effort: '2–4 hrs',
-              },
-              {
-                action: 'Build a Reddit presence in your category',
-                example: 'r/jewelry, r/frugalfemalefashion — answer questions, don\'t pitch',
-                effort: 'Ongoing',
-              },
-            ].map((item, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-3 px-3 py-2 rounded"
-                style={{ background: 'rgba(255,255,255,0.02)' }}
-              >
-                <span
-                  className="text-[12px] font-mono mt-0.5 flex-shrink-0"
-                  style={{ color: '#F59E0B' }}
-                >
-                  0{i + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] text-white">{item.action}</p>
-                  <p className="text-[11px] mt-0.5" style={{ color: '#475569' }}>
-                    {item.example}
-                  </p>
-                </div>
-                <span
-                  className="text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5"
-                  style={{ background: 'rgba(255,255,255,0.04)', color: '#64748B' }}
-                >
-                  {item.effort}
-                </span>
-              </div>
-            ))}
+      <div className="space-y-3">
+        {/* Tool 1: Reddit post */}
+        <div
+          className="rounded-[6px] p-3"
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
+        >
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div>
+              <p className="text-[13px] font-medium text-white">Post in r/jewelry</p>
+              <p className="text-[11px] mt-0.5" style={{ color: '#475569' }}>
+                Perplexity indexes Reddit fast — a single post can appear in AI answers within days
+              </p>
+            </div>
+            <button
+              onClick={() => copyToClipboard(redditPost, 'reddit')}
+              className="flex-shrink-0 text-[11px] px-2.5 py-1 rounded transition-all"
+              style={{
+                background: copied === 'reddit' ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.06)',
+                color: copied === 'reddit' ? '#00D4FF' : '#94a3b8',
+                border: `1px solid ${copied === 'reddit' ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.08)'}`,
+              }}
+            >
+              {copied === 'reddit' ? '✓ Copied' : 'Copy post'}
+            </button>
           </div>
+          <p className="text-[11px] px-2 py-1.5 rounded font-mono leading-relaxed line-clamp-2" style={{ background: 'rgba(0,0,0,0.3)', color: '#475569' }}>
+            {redditPost.split('\n')[0]}
+          </p>
         </div>
 
-        <div className="flex flex-col items-end justify-start gap-2 flex-shrink-0 min-w-[130px]">
-          <span
-            className="text-[11px] px-2 py-1 rounded w-full text-center"
-            style={{
-              background: 'rgba(245,158,11,0.08)',
-              color: '#F59E0B',
-              border: '1px solid rgba(245,158,11,0.15)',
-            }}
-          >
-            Manual steps
+        {/* Tool 2: Outreach email */}
+        <div
+          className="rounded-[6px] p-3"
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
+        >
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div>
+              <p className="text-[13px] font-medium text-white">Email authors of "best under $X" posts</p>
+              <p className="text-[11px] mt-0.5" style={{ color: '#475569' }}>
+                Find articles ranking for your top query gaps and ask to be included
+              </p>
+            </div>
+            <button
+              onClick={() => copyToClipboard(outreachEmail, 'email')}
+              className="flex-shrink-0 text-[11px] px-2.5 py-1 rounded transition-all"
+              style={{
+                background: copied === 'email' ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.06)',
+                color: copied === 'email' ? '#00D4FF' : '#94a3b8',
+                border: `1px solid ${copied === 'email' ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.08)'}`,
+              }}
+            >
+              {copied === 'email' ? '✓ Copied' : 'Copy email'}
+            </button>
+          </div>
+          <p className="text-[11px] px-2 py-1.5 rounded font-mono leading-relaxed line-clamp-2" style={{ background: 'rgba(0,0,0,0.3)', color: '#475569' }}>
+            Subject: Quick addition for your "{topQuery || 'fine jewelry'}" article
+          </p>
+        </div>
+
+        {/* Tool 3: Directory targets */}
+        <div
+          className="flex items-start gap-3 px-3 py-2.5 rounded"
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
+        >
+          <span className="text-[12px] font-mono mt-0.5 flex-shrink-0" style={{ color: '#F59E0B' }}>03</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] text-white">Submit to Who What Wear, Refinery29, The Strategist</p>
+            <p className="text-[11px] mt-0.5" style={{ color: '#475569' }}>
+              "Best of" list placements — these are cited directly in AI recommendations
+            </p>
+          </div>
+          <span className="text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5" style={{ background: 'rgba(255,255,255,0.04)', color: '#64748B' }}>
+            1–2 hrs
           </span>
         </div>
       </div>
@@ -320,6 +375,8 @@ export function FixesPage() {
   const { data: fixes, isLoading } = useFixes('');
   const { data: queryGaps } = useQueryGaps();
   const { data: scores } = useVisibilityScores(30);
+  const { data: merchant } = useMerchant();
+  const { data: competitors } = useCompetitors();
   const rejectFix = useRejectFix();
 
   const allFixes = (fixes ?? []).filter((f) => f.status !== 'rejected');
@@ -336,6 +393,23 @@ export function FixesPage() {
   const totalImpact = pendingFixes.reduce((sum, f) => sum + f.est_impact, 0);
   const appliedCount = allFixes.filter((f) => f.status === 'applied' || f.status === 'manual').length;
 
+  // First pending fix in first non-empty layer — gets the "Start here" badge
+  const startHereId = (() => {
+    for (const layer of LAYER_ORDER) {
+      const first = pendingFixes.find((f) => (f.fix_layer ?? 'content') === layer);
+      if (first) return first.id;
+    }
+    return null;
+  })();
+
+  // Authority card data
+  const brandName = merchant?.brand_name ?? '';
+  const topCompetitor = competitors?.[0]?.name ?? '';
+  const topQuery = (queryGaps ?? [])[0]?.query ?? '';
+
+  // Missing query count for header urgency
+  const missingQueryCount = (queryGaps ?? []).length;
+
   function handleDismiss(id: string) {
     rejectFix.mutate(id);
   }
@@ -345,9 +419,11 @@ export function FixesPage() {
       <PageHeader
         title="AI Visibility Fixes"
         subtitle={
-          pendingFixes.filter((f) => f.priority === 'high').length > 0
-            ? `${pendingFixes.filter((f) => f.priority === 'high').length} critical gap${pendingFixes.filter((f) => f.priority === 'high').length > 1 ? 's' : ''} — competitors are being cited instead of you`
-            : 'AI-generated improvements to get you cited more — review and apply in one click'
+          missingQueryCount > 0
+            ? `You're missing ${missingQueryCount} buyer quer${missingQueryCount !== 1 ? 'ies' : 'y'} where competitors are being recommended instead of you`
+            : pendingFixes.length > 0
+            ? 'Apply these fixes to start appearing in AI recommendations'
+            : 'AI-generated improvements to get you cited more'
         }
       />
 
@@ -453,12 +529,17 @@ export function FixesPage() {
                       topGaps={topGaps}
                       currentCitations={currentCitations}
                       queriesPerPlatform={queriesPerPlatform}
+                      isStartHere={fix.id === startHereId}
                     />
                   ))}
 
                   {/* Authority guidance card when no authority fixes exist */}
                   {isAuthorityLayer && !hasAuthorityFix && (
-                    <AuthorityGuidanceCard />
+                    <AuthorityGuidanceCard
+                      brandName={brandName}
+                      topCompetitor={topCompetitor}
+                      topQuery={topQuery}
+                    />
                   )}
                 </div>
               </div>
