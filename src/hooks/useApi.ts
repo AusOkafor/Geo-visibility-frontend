@@ -100,3 +100,6 @@ export const useScanProgress = () =>
 
 export const useSchemaStatus = () =>
   useQuery({ queryKey: ['schema-status'], queryFn: api.getSchemaStatus });
+
+export const useAuthorityScore = () =>
+  useQuery({ queryKey: ['authority-score'], queryFn: api.getAuthorityScore });

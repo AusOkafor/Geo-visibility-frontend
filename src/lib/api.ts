@@ -1,4 +1,4 @@
-import type { Merchant, VisibilityScore, DailyScore, Competitor, Fix, PlatformSource, QueryGap, BrandRecognition, LiveAnswer, AIReadinessScore, NextAction, VisibilityPipeline, QuickWin, ScanProgress } from '../types';
+import type { Merchant, VisibilityScore, DailyScore, Competitor, Fix, PlatformSource, QueryGap, BrandRecognition, LiveAnswer, AIReadinessScore, NextAction, VisibilityPipeline, QuickWin, ScanProgress, AuthorityScore } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://geo-v-backend.onrender.com/api/v1';
 const API_HOST = import.meta.env.VITE_API_HOST ?? 'https://geo-v-backend.onrender.com';
@@ -94,3 +94,6 @@ export const getScanProgress = (): Promise<ScanProgress> =>
 
 export const getSchemaStatus = (): Promise<{ active: boolean; value: string | null }> =>
   request('/schema/status');
+
+export const getAuthorityScore = (): Promise<AuthorityScore> =>
+  request('/authority/score');

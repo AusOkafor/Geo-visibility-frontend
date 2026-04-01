@@ -4,7 +4,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { useFixes, useRejectFix, useQueryGaps, useVisibilityScores, useMerchant, useCompetitors } from '../../hooks/useApi';
+import { useFixes, useRejectFix, useQueryGaps, useVisibilityScores, useMerchant, useCompetitors, useAuthorityScore } from '../../hooks/useApi';
 import type { Fix, QueryGap } from '../../types';
 
 // Maps fix_layer → the 3-bucket problem frame shown on Visibility page
@@ -377,6 +377,7 @@ export function FixesPage() {
   const { data: scores } = useVisibilityScores(30);
   const { data: merchant } = useMerchant();
   const { data: competitors } = useCompetitors();
+  const { data: authorityScore } = useAuthorityScore();
   const rejectFix = useRejectFix();
 
   const allFixes = (fixes ?? []).filter((f) => f.status !== 'rejected');
@@ -513,11 +514,18 @@ export function FixesPage() {
                   <span className="text-[11px]" style={{ color: '#334155' }}>
                     — {meta.sublabel}
                   </span>
-                  {group.length > 0 && (
-                    <span className="text-[10px] font-mono ml-auto" style={{ color: '#475569' }}>
-                      {group.length} fix{group.length > 1 ? 'es' : ''}
-                    </span>
-                  )}
+                  <div className="ml-auto flex items-center gap-2">
+                    {isAuthorityLayer && authorityScore !== undefined && (
+                      <span className="text-[10px] font-mono" style={{ color: '#F59E0B' }}>
+                        {authorityScore.score}/100
+                      </span>
+                    )}
+                    {group.length > 0 && (
+                      <span className="text-[10px] font-mono" style={{ color: '#475569' }}>
+                        {group.length} fix{group.length > 1 ? 'es' : ''}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-3">

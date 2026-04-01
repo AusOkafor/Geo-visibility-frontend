@@ -124,6 +124,15 @@ export interface ScanProgress {
   delta_score: number;
 }
 
+export interface AuthorityScore {
+  score: number;
+  grounded_rate: number;
+  grounded_queries: number;
+  listings_done: number;
+  listings_total: number;
+  tier: 'none' | 'low' | 'building' | 'established';
+}
+
 export interface Fix {
   id: string;
   fix_type: 'description' | 'faq' | 'schema' | 'listing';

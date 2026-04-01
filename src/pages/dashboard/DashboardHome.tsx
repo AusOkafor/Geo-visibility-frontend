@@ -31,6 +31,7 @@ import {
   useVisibilityPipeline,
   useQuickWins,
   useScanProgress as useScanProgressQuery,
+  useAuthorityScore,
 } from '../../hooks/useApi';
 import { useQueryClient } from '@tanstack/react-query';
 import * as api from '../../lib/api';
@@ -128,6 +129,7 @@ export function DashboardHome() {
   const { data: pipeline } = useVisibilityPipeline();
   const { data: quickWins } = useQuickWins();
   const { data: scanProgressData } = useScanProgressQuery();
+  const { data: authorityScore } = useAuthorityScore();
   const triggerScan = useTriggerScan();
 
   const chatgpt = scores?.find((s) => s.platform === 'chatgpt');
@@ -422,6 +424,73 @@ export function DashboardHome() {
           </>
         )}
       </div>
+
+      {/* ── SECTION 2b: Authority Score ─────────────────────────────────────── */}
+      {authorityScore !== undefined && (
+        <div className="rounded-[8px] p-5 mb-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest mb-1" style={{ color: '#64748B' }}>Authority Score</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[32px] font-bold font-mono text-white leading-none">{authorityScore.score}</span>
+                <span className="text-[13px]" style={{ color: '#475569' }}>/100</span>
+              </div>
+              <p className="text-[12px] mt-1" style={{ color: '#64748B' }}>
+                How often AI cites your brand from real external sources
+              </p>
+            </div>
+            <span
+              className="text-[10px] font-semibold px-2.5 py-1 rounded uppercase tracking-wider flex-shrink-0 mt-1"
+              style={{
+                background: authorityScore.tier === 'established' ? 'rgba(0,212,255,0.1)' : authorityScore.tier === 'building' ? 'rgba(167,139,250,0.1)' : authorityScore.tier === 'low' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.08)',
+                color: authorityScore.tier === 'established' ? '#00D4FF' : authorityScore.tier === 'building' ? '#A78BFA' : authorityScore.tier === 'low' ? '#F59E0B' : '#EF4444',
+                border: `1px solid ${authorityScore.tier === 'established' ? 'rgba(0,212,255,0.2)' : authorityScore.tier === 'building' ? 'rgba(167,139,250,0.2)' : authorityScore.tier === 'low' ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.15)'}`,
+              }}
+            >
+              {authorityScore.tier === 'none' ? 'Not cited' : authorityScore.tier}
+            </span>
+          </div>
+          <div className="space-y-3">
+            {/* Grounded citation rate */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[11px]" style={{ color: '#94a3b8' }}>
+                  Web-grounded citations
+                  {authorityScore.grounded_queries > 0 && (
+                    <span className="ml-1" style={{ color: '#475569' }}>({authorityScore.grounded_queries} queries)</span>
+                  )}
+                </p>
+                <p className="text-[11px] font-mono" style={{ color: '#94a3b8' }}>{authorityScore.grounded_rate}%</p>
+              </div>
+              <div className="h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <div className="h-1.5 rounded-full transition-all duration-500" style={{ background: '#00D4FF', width: `${authorityScore.grounded_rate}%` }} />
+              </div>
+            </div>
+            {/* Listing completeness */}
+            {authorityScore.listings_total > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[11px]" style={{ color: '#94a3b8' }}>
+                    Directory listings complete
+                    <span className="ml-1" style={{ color: '#475569' }}>({authorityScore.listings_done}/{authorityScore.listings_total})</span>
+                  </p>
+                  <p className="text-[11px] font-mono" style={{ color: '#94a3b8' }}>
+                    {authorityScore.listings_total > 0 ? Math.round((authorityScore.listings_done / authorityScore.listings_total) * 100) : 0}%
+                  </p>
+                </div>
+                <div className="h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                  <div className="h-1.5 rounded-full transition-all duration-500" style={{ background: '#F59E0B', width: `${authorityScore.listings_total > 0 ? Math.round((authorityScore.listings_done / authorityScore.listings_total) * 100) : 0}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
+          {authorityScore.score < 26 && (
+            <Link to="/dashboard/fixes" className="inline-block mt-3 text-[12px] font-semibold" style={{ color: '#F59E0B' }}>
+              Build authority — see Layer 3 fixes →
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* ── SECTION 3: Why AI models choose others ───────────────────────────── */}
       {whyReasons.length > 0 && scores && scores.length > 0 && !scanActive && (
