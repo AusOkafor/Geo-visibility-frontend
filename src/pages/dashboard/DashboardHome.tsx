@@ -42,8 +42,9 @@ import type { DailyScore } from '../../types';
 
 function getPlatformDelta(daily: DailyScore[], key: 'chatgpt' | 'perplexity' | 'gemini'): number | undefined {
   if (!daily || daily.length < 2) return undefined;
+  // Compare first vs last entry in the fetched range — not a hardcoded 8-day offset
   const last = daily[daily.length - 1][key];
-  const prev = daily[Math.max(0, daily.length - 8)][key];
+  const prev = daily[0][key];
   return last - prev;
 }
 
@@ -425,67 +426,74 @@ export function DashboardHome() {
         )}
       </div>
 
-      {/* ── SECTION 2b: Authority Score ─────────────────────────────────────── */}
+      {/* ── SECTION 2b: Authority ────────────────────────────────────────────── */}
       {authorityScore !== undefined && (
         <div className="rounded-[8px] p-5 mb-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <div>
-              <p className="text-[11px] uppercase tracking-widest mb-1" style={{ color: '#64748B' }}>Authority Score</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-[32px] font-bold font-mono text-white leading-none">{authorityScore.score}</span>
-                <span className="text-[13px]" style={{ color: '#475569' }}>/100</span>
-              </div>
-              <p className="text-[12px] mt-1" style={{ color: '#64748B' }}>
-                How often AI cites your brand from real external sources
-              </p>
-            </div>
-            <span
-              className="text-[10px] font-semibold px-2.5 py-1 rounded uppercase tracking-wider flex-shrink-0 mt-1"
-              style={{
-                background: authorityScore.tier === 'established' ? 'rgba(0,212,255,0.1)' : authorityScore.tier === 'building' ? 'rgba(167,139,250,0.1)' : authorityScore.tier === 'low' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.08)',
-                color: authorityScore.tier === 'established' ? '#00D4FF' : authorityScore.tier === 'building' ? '#A78BFA' : authorityScore.tier === 'low' ? '#F59E0B' : '#EF4444',
-                border: `1px solid ${authorityScore.tier === 'established' ? 'rgba(0,212,255,0.2)' : authorityScore.tier === 'building' ? 'rgba(167,139,250,0.2)' : authorityScore.tier === 'low' ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.15)'}`,
-              }}
-            >
-              {authorityScore.tier === 'none' ? 'Not cited' : authorityScore.tier}
-            </span>
-          </div>
-          <div className="space-y-3">
-            {/* Grounded citation rate */}
+          <p className="text-[11px] uppercase tracking-widest mb-4" style={{ color: '#64748B' }}>Authority — Get Trusted</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+            {/* Signal 1: AI citation rate — real data */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <p className="text-[11px]" style={{ color: '#94a3b8' }}>
-                  Web-grounded citations
-                  {authorityScore.grounded_queries > 0 && (
-                    <span className="ml-1" style={{ color: '#475569' }}>({authorityScore.grounded_queries} queries)</span>
-                  )}
-                </p>
-                <p className="text-[11px] font-mono" style={{ color: '#94a3b8' }}>{authorityScore.grounded_rate}%</p>
+                <p className="text-[12px] font-medium text-white">AI citation rate</p>
+                <span
+                  className="text-[10px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider"
+                  style={{
+                    background: authorityScore.tier === 'established' ? 'rgba(0,212,255,0.1)' : authorityScore.tier === 'building' ? 'rgba(167,139,250,0.1)' : authorityScore.tier === 'low' ? 'rgba(245,158,11,0.1)' : 'rgba(100,116,139,0.1)',
+                    color: authorityScore.tier === 'established' ? '#00D4FF' : authorityScore.tier === 'building' ? '#A78BFA' : authorityScore.tier === 'low' ? '#F59E0B' : '#64748B',
+                  }}
+                >
+                  {authorityScore.tier === 'none' ? 'Not cited' : authorityScore.tier}
+                </span>
               </div>
-              <div className="h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <div className="flex items-baseline gap-1.5 mb-2">
+                <span className="text-[28px] font-bold font-mono text-white leading-none">{authorityScore.grounded_rate}%</span>
+                {authorityScore.grounded_queries > 0 && (
+                  <span className="text-[11px]" style={{ color: '#475569' }}>
+                    ({authorityScore.grounded_hits}/{authorityScore.grounded_queries} web-grounded queries)
+                  </span>
+                )}
+              </div>
+              <div className="h-1.5 rounded-full mb-2" style={{ background: 'rgba(255,255,255,0.06)' }}>
                 <div className="h-1.5 rounded-full transition-all duration-500" style={{ background: '#00D4FF', width: `${authorityScore.grounded_rate}%` }} />
               </div>
+              <p className="text-[11px]" style={{ color: '#64748B' }}>
+                % of AI web searches that cited your brand — from real scan data
+              </p>
             </div>
-            {/* Listing completeness */}
-            {authorityScore.listings_total > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-[11px]" style={{ color: '#94a3b8' }}>
-                    Directory listings complete
-                    <span className="ml-1" style={{ color: '#475569' }}>({authorityScore.listings_done}/{authorityScore.listings_total})</span>
-                  </p>
-                  <p className="text-[11px] font-mono" style={{ color: '#94a3b8' }}>
-                    {authorityScore.listings_total > 0 ? Math.round((authorityScore.listings_done / authorityScore.listings_total) * 100) : 0}%
-                  </p>
-                </div>
-                <div className="h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                  <div className="h-1.5 rounded-full transition-all duration-500" style={{ background: '#F59E0B', width: `${authorityScore.listings_total > 0 ? Math.round((authorityScore.listings_done / authorityScore.listings_total) * 100) : 0}%` }} />
-                </div>
+
+            {/* Signal 2: Listing completeness — merchant action */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[12px] font-medium text-white">Directory listings</p>
+                <span className="text-[10px] font-mono" style={{ color: '#475569' }}>
+                  {authorityScore.listings_done}/{authorityScore.listings_total > 0 ? authorityScore.listings_total : '—'} done
+                </span>
               </div>
-            )}
+              <div className="flex items-baseline gap-1.5 mb-2">
+                <span className="text-[28px] font-bold font-mono text-white leading-none">
+                  {authorityScore.listings_total > 0
+                    ? Math.round((authorityScore.listings_done / authorityScore.listings_total) * 100)
+                    : 0}%
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full mb-2" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <div
+                  className="h-1.5 rounded-full transition-all duration-500"
+                  style={{
+                    background: '#F59E0B',
+                    width: `${authorityScore.listings_total > 0 ? Math.round((authorityScore.listings_done / authorityScore.listings_total) * 100) : 0}%`,
+                  }}
+                />
+              </div>
+              <p className="text-[11px]" style={{ color: '#64748B' }}>
+                Authority fixes you've applied — each listing builds external footprint
+              </p>
+            </div>
           </div>
-          {authorityScore.score < 26 && (
-            <Link to="/dashboard/fixes" className="inline-block mt-3 text-[12px] font-semibold" style={{ color: '#F59E0B' }}>
+
+          {authorityScore.grounded_rate < 26 && (
+            <Link to="/dashboard/fixes" className="inline-block mt-4 text-[12px] font-semibold" style={{ color: '#F59E0B' }}>
               Build authority — see Layer 3 fixes →
             </Link>
           )}

@@ -125,12 +125,14 @@ export interface ScanProgress {
 }
 
 export interface AuthorityScore {
-  score: number;
+  // AI-derived signal: % of web-grounded queries where brand was mentioned
   grounded_rate: number;
   grounded_queries: number;
+  grounded_hits: number;
+  tier: 'none' | 'low' | 'building' | 'established';
+  // Merchant-action signal: authority fixes applied (shown separately)
   listings_done: number;
   listings_total: number;
-  tier: 'none' | 'low' | 'building' | 'established';
 }
 
 export interface Fix {

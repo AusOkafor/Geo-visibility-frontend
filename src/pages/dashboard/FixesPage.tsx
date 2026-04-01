@@ -40,14 +40,14 @@ function FixCard({
   onDismiss,
   topGaps,
   currentCitations,
-  queriesPerPlatform,
+  totalQueriesRun,
   isStartHere,
 }: {
   fix: Fix;
   onDismiss: (id: string) => void;
   topGaps: QueryGap[];
   currentCitations: number;
-  queriesPerPlatform: number;
+  totalQueriesRun: number;
   isStartHere?: boolean;
 }) {
   const navigate = useNavigate();
@@ -56,11 +56,12 @@ function FixCard({
   const typeLabel =
     fix.fix_type === 'faq' ? 'FAQ Page' : fix.fix_type.charAt(0).toUpperCase() + fix.fix_type.slice(1);
 
-  // Projected new citations: est_impact applied to per-platform query count
+  // Project gain using the same total-queries denominator as currentCitations.
+  // Cap at totalQueriesRun — you can't be cited more times than queries were run.
   const projectedGain =
-    queriesPerPlatform > 0 ? Math.round(queriesPerPlatform * fix.est_impact / 100) : null;
+    totalQueriesRun > 0 ? Math.round(totalQueriesRun * fix.est_impact / 100) : null;
   const projectedTotal =
-    projectedGain !== null ? Math.min(currentCitations + projectedGain, queriesPerPlatform * 3) : null;
+    projectedGain !== null ? Math.min(currentCitations + projectedGain, totalQueriesRun) : null;
 
   // Only show query gaps on content/structure fixes (not authority)
   const showGaps = layer !== 'authority' && topGaps.length > 0 && fix.status === 'pending';
@@ -162,7 +163,7 @@ function FixCard({
               </div>
 
               {/* Before → After in concrete citation counts */}
-              {projectedTotal !== null && queriesPerPlatform > 0 && (
+              {projectedTotal !== null && totalQueriesRun > 0 && (
                 <div
                   className="text-[11px] px-2.5 py-1.5 rounded w-full"
                   style={{
@@ -382,9 +383,10 @@ export function FixesPage() {
 
   const allFixes = (fixes ?? []).filter((f) => f.status !== 'rejected');
 
-  // Sum citations found and derive a per-platform query count for Before/After display
+  // Sum citations and total queries across all platforms — use the same denominator
+  // for both "Now" and "After" so the projection is internally consistent.
   const currentCitations = scores?.reduce((s, sc) => s + (sc.queries_hit ?? 0), 0) ?? 0;
-  const queriesPerPlatform = scores?.reduce((max, sc) => Math.max(max, sc.queries_run ?? 0), 0) ?? 0;
+  const totalQueriesRun = scores?.reduce((s, sc) => s + (sc.queries_run ?? 0), 0) ?? 0;
 
   // Top query gaps to attach to content/structure cards
   const topGaps = (queryGaps ?? []).slice(0, 5);
@@ -517,7 +519,7 @@ export function FixesPage() {
                   <div className="ml-auto flex items-center gap-2">
                     {isAuthorityLayer && authorityScore !== undefined && (
                       <span className="text-[10px] font-mono" style={{ color: '#F59E0B' }}>
-                        {authorityScore.score}/100
+                        {authorityScore.grounded_rate}% cited
                       </span>
                     )}
                     {group.length > 0 && (
@@ -536,7 +538,7 @@ export function FixesPage() {
                       onDismiss={handleDismiss}
                       topGaps={topGaps}
                       currentCitations={currentCitations}
-                      queriesPerPlatform={queriesPerPlatform}
+                      totalQueriesRun={totalQueriesRun}
                       isStartHere={fix.id === startHereId}
                     />
                   ))}
