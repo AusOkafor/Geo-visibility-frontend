@@ -391,13 +391,11 @@ export function SettingsPage() {
                 className="text-[12px] px-2 py-0.5 rounded font-medium"
                 style={{ background: 'rgba(0,212,255,0.1)', color: '#00D4FF' }}
               >
-                {merchant?.plan === 'growth' ? 'Growth' : merchant?.plan === 'pro' ? 'Pro' : 'Growth'}
+                {merchant?.plan === 'growth' ? 'Growth' : merchant?.plan === 'pro' ? 'Pro' : merchant?.plan === 'starter' ? 'Starter' : 'Free'}
               </span>
-              <span className="font-mono font-bold text-white text-[18px]">$79</span>
-              <span className="text-[13px]" style={{ color: '#64748B' }}>/month</span>
             </div>
             <p className="text-[13px] mb-3" style={{ color: '#64748B' }}>
-              Renewal date: April 1, 2026
+              Manage billing and renewal in your Shopify admin.
             </p>
             <ul className="space-y-1 text-[13px]" style={{ color: '#94a3b8' }}>
               {['3 AI platforms monitored', '100 queries per platform', 'Daily scan frequency', 'Unlimited fixes', 'Competitor tracking (top 10)'].map((f) => (
