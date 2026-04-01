@@ -66,6 +66,9 @@ function FixCard({
   // Only show query gaps on content/structure fixes (not authority)
   const showGaps = layer !== 'authority' && topGaps.length > 0 && fix.status === 'pending';
 
+  // How many of the top query gaps this fix type directly targets
+  const gapsCovered = layer !== 'authority' ? topGaps.filter(g => g.impact === 'high' || g.impact === 'medium').length : 0;
+
   return (
     <div
       className="rounded-[6px] p-5 transition-all duration-200 hover:border-white/10"
@@ -145,6 +148,11 @@ function FixCard({
               {fix.status === 'applied'
                 ? `✓ ${NEXT_STEP[layer]}`
                 : 'Apply the generated content to your store — copy from the review screen above'}
+              {fix.status === 'applied' && (
+                <p className="mt-1 text-[10px]" style={{ color: '#475569' }}>
+                  Day 0–7: indexing · Day 7–21: AI surfaces content · Next scan: check for citation changes
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -160,6 +168,11 @@ function FixCard({
                 <p className="text-[10px]" style={{ color: '#64748B' }}>
                   estimated visibility gain
                 </p>
+                {gapsCovered > 0 && (
+                  <p className="text-[10px] mt-0.5" style={{ color: '#475569' }}>
+                    targets {gapsCovered} missing quer{gapsCovered === 1 ? 'y' : 'ies'}
+                  </p>
+                )}
               </div>
 
               {/* Before → After in concrete citation counts */}

@@ -345,12 +345,12 @@ export function DashboardHome() {
         const accentColor = isGood ? '#00D4FF' : isWeak ? '#F59E0B' : '#EF4444';
         const bgColor = isGood ? 'rgba(0,212,255,0.05)' : isWeak ? 'rgba(245,158,11,0.07)' : 'rgba(239,68,68,0.08)';
         const headline = isGood
-          ? 'Brand recognized across AI platforms'
+          ? 'Brand detected across platforms — but rarely recommended'
           : isWeak
           ? 'Weak signal — AI has inconsistent awareness of your brand'
           : 'AI models do not know your brand exists';
         const subline = isGood
-          ? `Mentioned in ${brandRecognition.mentioned_queries} of ${brandRecognition.total_queries} grounded queries`
+          ? `Mentioned in ${brandRecognition.mentioned_queries} of ${brandRecognition.total_queries} web-grounded queries — apply fixes to increase how often AI recommends you`
           : isNone
           ? `Not found in any of ${brandRecognition.total_queries} web-grounded AI search queries — your brand has no footprint AI can cite`
           : `Mentioned in only ${brandRecognition.mentioned_queries} of ${brandRecognition.total_queries} queries — fragile, unreliable signal`;
@@ -387,6 +387,11 @@ export function DashboardHome() {
       })()}
 
       {/* ── SECTION 2: Platform scores ───────────────────────────────────────── */}
+      {scores && scores.length > 0 && (
+        <p className="text-[11px] mb-3" style={{ color: '#475569' }}>
+          % = how often your brand appears in AI answers across tested buyer queries
+        </p>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
         {scoresLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
@@ -587,7 +592,10 @@ export function DashboardHome() {
       {nextActions && nextActions.length > 0 && !scanActive && !isMockChart && (
         <div className="rounded-[8px] p-5 mb-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
           <p className="text-[14px] font-semibold text-white mb-1">Your next 3 moves</p>
-          <p className="text-[12px] mb-4" style={{ color: '#64748B' }}>Highest-impact actions based on your current scan data</p>
+          <p className="text-[12px] mb-1" style={{ color: '#64748B' }}>Highest-impact actions based on your current scan data</p>
+          <p className="text-[11px] mb-4 font-mono" style={{ color: '#334155' }}>
+            Become understandable → Become relevant → Become trusted
+          </p>
           <div className="space-y-2">
             {nextActions.slice(0, 3).map((action, i) => (
               <div key={i} className="flex items-start gap-3 py-3 px-3 rounded-[6px]" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
@@ -690,7 +698,7 @@ export function DashboardHome() {
             <p className="font-semibold text-white text-[15px]">Who's winning your citations</p>
             {compList.length > 0 && (
               <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>
-                Ranked by how often AI recommends them instead of you
+                Ranked by how often AI recommends them instead of you — from your scan data
               </p>
             )}
           </div>
@@ -717,6 +725,11 @@ export function DashboardHome() {
                   <p className="text-[11px] ml-6 mt-0.5 line-clamp-1" style={{ color: '#475569' }}>
                     {comp.why_points?.[0]}
                   </p>
+                  {comp.top_queries?.[0] && !dimmed && (
+                    <p className="text-[10px] ml-6 mt-0.5 line-clamp-1 italic" style={{ color: '#334155' }}>
+                      e.g. "{comp.top_queries[0]}"
+                    </p>
+                  )}
                 </div>
               );
             };
@@ -797,7 +810,7 @@ export function DashboardHome() {
           <div className="flex items-start gap-3 mb-3">
             <div className="flex-1">
               <p className="font-medium text-white text-[15px]">Queries where you're completely invisible</p>
-              <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>Every query below is a buyer asking AI for help — and you're not there</p>
+              <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>Real buyer prompts tested across ChatGPT, Perplexity, and Gemini — your brand wasn't cited in any of these</p>
             </div>
             {gapList.length > 0 && (
               <span className="flex-shrink-0 text-[11px] font-mono px-2 py-0.5 rounded" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}>
@@ -851,6 +864,27 @@ export function DashboardHome() {
           )}
         </div>
       )}
+
+      {/* ── Methodology + timeline ───────────────────────────────────────────── */}
+      {!isMockChart && (
+        <div className="rounded-[6px] px-4 py-3 mb-2" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+          <p className="text-[11px] mb-2 font-medium" style={{ color: '#475569' }}>After applying a fix</p>
+          <div className="flex flex-wrap gap-x-6 gap-y-1">
+            {[
+              { label: 'Day 0–7', text: 'Content indexed by Shopify' },
+              { label: 'Day 7–21', text: 'AI systems begin surfacing updated content' },
+              { label: 'Next scan', text: 'Early citation changes may appear' },
+            ].map(s => (
+              <p key={s.label} className="text-[11px]" style={{ color: '#334155' }}>
+                <span className="font-mono" style={{ color: '#475569' }}>{s.label}</span> — {s.text}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+      <p className="text-[10px] text-center pb-6" style={{ color: '#334155' }}>
+        Methodology: Visibility is measured by testing real buyer prompts across ChatGPT, Perplexity, and Gemini and tracking brand mentions in responses. Citations counted from web-grounded responses only.
+      </p>
     </div>
   );
 }
