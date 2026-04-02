@@ -103,3 +103,16 @@ export const useSchemaStatus = () =>
 
 export const useAuthorityScore = () =>
   useQuery({ queryKey: ['authority-score'], queryFn: api.getAuthorityScore });
+
+export const useSocialLinks = () =>
+  useQuery({ queryKey: ['social-links'], queryFn: api.getSocialLinks });
+
+export const useUpdateSocialLinks = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.updateSocialLinks,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['social-links'] });
+    },
+  });
+};

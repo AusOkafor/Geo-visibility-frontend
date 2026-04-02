@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Store } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { useMerchant, useUpdateMerchant } from '../../hooks/useApi';
+import { useMerchant, useUpdateMerchant, useSocialLinks, useUpdateSocialLinks } from '../../hooks/useApi';
 
 interface ToggleProps {
   checked: boolean;
@@ -88,9 +88,19 @@ function Card({ title, children, redBorder = false }: { title: string; children:
   );
 }
 
+const SOCIAL_PLATFORMS = [
+  { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/yourbrand' },
+  { key: 'tiktok',    label: 'TikTok',    placeholder: 'https://tiktok.com/@yourbrand' },
+  { key: 'facebook',  label: 'Facebook',  placeholder: 'https://facebook.com/yourbrand' },
+  { key: 'pinterest', label: 'Pinterest', placeholder: 'https://pinterest.com/yourbrand' },
+  { key: 'youtube',   label: 'YouTube',   placeholder: 'https://youtube.com/@yourbrand' },
+] as const;
+
 export function SettingsPage() {
   const { data: merchant } = useMerchant();
   const updateMerchant = useUpdateMerchant();
+  const { data: socialData } = useSocialLinks();
+  const updateSocialLinks = useUpdateSocialLinks();
   const navigate = useNavigate();
   const [disconnectConfirm, setDisconnectConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -117,6 +127,24 @@ export function SettingsPage() {
     () => localStorage.getItem('settings_category') ?? ''
   );
   const [profileDirty, setProfileDirty] = useState(false);
+
+  // Social links: one slot per platform, keyed by platform index
+  const [socialInputs, setSocialInputs] = useState<string[]>(() =>
+    SOCIAL_PLATFORMS.map(() => '')
+  );
+  const [socialDirty, setSocialDirty] = useState(false);
+
+  useEffect(() => {
+    if (socialData?.social_links) {
+      // Map stored links back onto the platform slots by matching the URL prefix
+      setSocialInputs(
+        SOCIAL_PLATFORMS.map(({ placeholder }) => {
+          const domain = new URL(placeholder).hostname;
+          return socialData.social_links.find((l) => l.includes(domain)) ?? '';
+        })
+      );
+    }
+  }, [socialData]);
 
   useEffect(() => {
     if (merchant) {
@@ -280,6 +308,57 @@ export function SettingsPage() {
             <span className="text-[12px]" style={{ color: '#EF4444' }}>
               Failed to save — check your connection
             </span>
+          )}
+        </div>
+      </Card>
+
+      {/* Social links */}
+      <Card title="Social profiles">
+        <p className="text-[13px] mb-4" style={{ color: '#64748B' }}>
+          Added to your schema as <code className="text-[12px] px-1 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>sameAs</code> links — helps AI models connect your store to your social presence.
+        </p>
+        <div className="space-y-3">
+          {SOCIAL_PLATFORMS.map(({ label, placeholder }, i) => (
+            <div key={label}>
+              <label className="text-[12px] block mb-1" style={{ color: '#94a3b8' }}>{label}</label>
+              <input
+                type="url"
+                value={socialInputs[i]}
+                placeholder={placeholder}
+                onChange={(e) => {
+                  const next = [...socialInputs];
+                  next[i] = e.target.value;
+                  setSocialInputs(next);
+                  setSocialDirty(true);
+                }}
+                className="w-full text-[13px] px-3 py-2 rounded font-mono"
+                style={{ background: '#0d0d10', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff' }}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            onClick={() => {
+              updateSocialLinks.mutate(
+                socialInputs.filter(Boolean),
+                { onSuccess: () => setSocialDirty(false) }
+              );
+            }}
+            disabled={updateSocialLinks.isPending || !socialDirty}
+            className="text-[12px] px-3 py-1.5 rounded transition-all"
+            style={{
+              background: updateSocialLinks.isSuccess && !socialDirty ? 'rgba(0,212,255,0.1)' : '#00D4FF',
+              color: updateSocialLinks.isSuccess && !socialDirty ? '#00D4FF' : '#0A0A0B',
+              opacity: !socialDirty && !updateSocialLinks.isSuccess ? 0.4 : 1,
+              cursor: !socialDirty ? 'default' : 'pointer',
+              borderRadius: 6,
+            }}
+          >
+            {updateSocialLinks.isPending ? 'Saving...' : updateSocialLinks.isSuccess && !socialDirty ? 'Saved ✓' : 'Save'}
+          </button>
+          {updateSocialLinks.isError && (
+            <span className="text-[12px]" style={{ color: '#EF4444' }}>Failed to save — check your connection</span>
           )}
         </div>
       </Card>

@@ -97,3 +97,9 @@ export const getSchemaStatus = (): Promise<{ active: boolean; value: string | nu
 
 export const getAuthorityScore = (): Promise<AuthorityScore> =>
   request('/authority/score');
+
+export const getSocialLinks = (): Promise<{ social_links: string[] }> =>
+  request('/merchant/social');
+
+export const updateSocialLinks = (links: string[]): Promise<{ status: string }> =>
+  request('/merchant/social', { method: 'PATCH', body: JSON.stringify({ social_links: links }) });
