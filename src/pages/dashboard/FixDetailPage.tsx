@@ -78,9 +78,9 @@ export function FixDetailPage() {
 
   const data = fix;
 
-  // Schema, FAQ, and listing fixes cannot be auto-applied via API.
-  // The backend marks them as "manual" — the merchant must paste the content manually.
-  const isManualFix = ['schema', 'faq', 'listing'].includes(data.fix_type);
+  // Schema and listing fixes cannot be auto-applied via API.
+  // FAQ fixes are auto-applied: backend marks status "applied" and rebuilds the schema.
+  const isManualFix = ['schema', 'listing'].includes(data.fix_type);
 
   const isApplied = data.status === 'applied' || (!isManualFix && approveMutation.isSuccess);
   const isMarkedManual = data.status === 'manual' || (isManualFix && approveMutation.isSuccess);
@@ -222,9 +222,20 @@ export function FixDetailPage() {
                         borderLeft: '3px solid #00D4FF',
                       }}
                     >
-                      {typeof data.generated.body === 'string'
-                        ? data.generated.body
-                        : JSON.stringify(data.generated, null, 2)}
+                      {data.fix_type === 'faq' && Array.isArray(data.generated?.faqs) ? (
+                        <div className="space-y-4">
+                          {data.generated.faqs.map((faq: { question: string; answer: string }, i: number) => (
+                            <div key={i}>
+                              <p className="font-medium mb-1" style={{ color: '#00D4FF' }}>Q: {faq.question}</p>
+                              <p style={{ color: '#e2e8f0' }}>A: {faq.answer}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : typeof data.generated.body === 'string' ? (
+                        data.generated.body
+                      ) : (
+                        JSON.stringify(data.generated, null, 2)
+                      )}
                     </div>
                     <p className="text-[11px] mt-2" style={{ color: '#00D4FF' }}>
                       {typeof data.generated.word_count === 'number' && typeof data.original.word_count === 'number'
@@ -353,10 +364,12 @@ export function FixDetailPage() {
               <div className="text-center py-4">
                 <p className="text-[32px] mb-2">✓</p>
                 <p className="font-medium" style={{ color: '#00D4FF' }}>
-                  Applied to your store
+                  {data.fix_type === 'faq' ? 'FAQ added to your schema' : 'Applied to your store'}
                 </p>
                 <p className="text-[12px] mt-1" style={{ color: '#64748B' }}>
-                  {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  {data.fix_type === 'faq'
+                    ? 'FAQPage entity is now live in your JSON-LD schema'
+                    : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                 </p>
               </div>
             ) : isMarkedManual ? (
@@ -620,7 +633,9 @@ export function FixDetailPage() {
                   )}
                 </button>
                 <p className="text-center text-[11px]" style={{ color: '#64748B' }}>
-                  Pushes this change directly to your Shopify product description
+                  {data.fix_type === 'faq'
+                    ? 'Adds FAQ pairs to your schema so AI can match your answers to buyer queries'
+                    : 'Pushes this change directly to your Shopify product description'}
                 </p>
                 {applyError && (
                   <p className="text-[12px] text-center" style={{ color: '#EF4444' }}>
