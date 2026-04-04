@@ -116,3 +116,19 @@ export const useUpdateSocialLinks = () => {
     },
   });
 };
+
+export const useMerchantFAQs = () =>
+  useQuery({ queryKey: ['merchant-faqs'], queryFn: api.getMerchantFAQs });
+
+export const useUpdateMerchantFAQs = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.updateMerchantFAQs,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['merchant-faqs'] });
+    },
+  });
+};
+
+export const useFAQSuggestions = () =>
+  useMutation({ mutationFn: api.getFAQSuggestions });

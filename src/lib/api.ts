@@ -103,3 +103,14 @@ export const getSocialLinks = (): Promise<{ social_links: string[] }> =>
 
 export const updateSocialLinks = (links: string[]): Promise<{ status: string }> =>
   request('/merchant/social', { method: 'PATCH', body: JSON.stringify({ social_links: links }) });
+
+export type MerchantFAQ = { id?: number; question: string; answer: string };
+
+export const getMerchantFAQs = (): Promise<MerchantFAQ[]> =>
+  request('/merchant/faqs');
+
+export const updateMerchantFAQs = (faqs: MerchantFAQ[]): Promise<MerchantFAQ[]> =>
+  request('/merchant/faqs', { method: 'PUT', body: JSON.stringify(faqs) });
+
+export const getFAQSuggestions = (): Promise<MerchantFAQ[]> =>
+  request('/merchant/faqs/suggestions');

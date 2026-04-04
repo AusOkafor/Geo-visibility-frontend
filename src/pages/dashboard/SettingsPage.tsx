@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Store } from 'lucide-react';
+import { Store, Plus, Trash2, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { useMerchant, useUpdateMerchant, useSocialLinks, useUpdateSocialLinks } from '../../hooks/useApi';
+import { useMerchant, useUpdateMerchant, useSocialLinks, useUpdateSocialLinks, useMerchantFAQs, useUpdateMerchantFAQs, useFAQSuggestions } from '../../hooks/useApi';
+import type { MerchantFAQ } from '../../lib/api';
 
 interface ToggleProps {
   checked: boolean;
@@ -101,7 +102,17 @@ export function SettingsPage() {
   const updateMerchant = useUpdateMerchant();
   const { data: socialData } = useSocialLinks();
   const updateSocialLinks = useUpdateSocialLinks();
+  const { data: savedFAQs } = useMerchantFAQs();
+  const updateFAQs = useUpdateMerchantFAQs();
+  const suggestFAQs = useFAQSuggestions();
   const navigate = useNavigate();
+
+  const [faqs, setFaqs] = useState<MerchantFAQ[]>([]);
+  const [faqDirty, setFaqDirty] = useState(false);
+
+  useEffect(() => {
+    if (savedFAQs) setFaqs(savedFAQs);
+  }, [savedFAQs]);
   const [disconnectConfirm, setDisconnectConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
@@ -493,6 +504,110 @@ export function SettingsPage() {
               Manage billing
             </button>
           </div>
+        </div>
+      </Card>
+
+      {/* FAQ */}
+      <Card title="Store FAQs">
+        <p className="text-[13px] mb-1" style={{ color: '#64748B' }}>
+          These Q&amp;As appear in your schema as a <code className="text-[12px] px-1 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>FAQPage</code> entity.
+          AI assistants cite factual, policy-based answers — shipping, materials, returns.
+        </p>
+        <p className="text-[12px] mb-4" style={{ color: '#475569' }}>
+          Avoid self-promotional questions like "Why is [brand] the best?" — AI down-ranks those.
+        </p>
+
+        <div className="space-y-3 mb-4">
+          {faqs.map((faq, i) => (
+            <div
+              key={i}
+              className="rounded-[6px] p-3"
+              style={{ background: '#0d0d10', border: '1px solid rgba(255,255,255,0.07)' }}
+            >
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  value={faq.question}
+                  placeholder="e.g. How long does shipping take?"
+                  onChange={(e) => {
+                    const next = [...faqs];
+                    next[i] = { ...next[i], question: e.target.value };
+                    setFaqs(next);
+                    setFaqDirty(true);
+                  }}
+                  className="flex-1 text-[13px] px-2 py-1.5 rounded"
+                  style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' }}
+                />
+                <button
+                  onClick={() => {
+                    setFaqs(faqs.filter((_, j) => j !== i));
+                    setFaqDirty(true);
+                  }}
+                  className="flex-shrink-0 p-1.5 rounded transition-colors hover:bg-red-950/30"
+                  style={{ color: '#64748B' }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              <textarea
+                value={faq.answer}
+                placeholder="e.g. Orders ship within 2-3 business days. Standard delivery takes 5-7 days."
+                rows={2}
+                onChange={(e) => {
+                  const next = [...faqs];
+                  next[i] = { ...next[i], answer: e.target.value };
+                  setFaqs(next);
+                  setFaqDirty(true);
+                }}
+                className="w-full text-[13px] px-2 py-1.5 rounded resize-none"
+                style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8' }}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={() => { setFaqs([...faqs, { question: '', answer: '' }]); setFaqDirty(true); }}
+            className="flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded transition-colors"
+            style={{ border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8' }}
+          >
+            <Plus size={13} /> Add FAQ
+          </button>
+          <button
+            onClick={() => suggestFAQs.mutate(undefined, {
+              onSuccess: (suggestions) => {
+                setFaqs((prev) => [...prev, ...suggestions]);
+                setFaqDirty(true);
+              },
+            })}
+            disabled={suggestFAQs.isPending}
+            className="flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded transition-all"
+            style={{ border: '1px solid rgba(0,212,255,0.2)', color: '#00D4FF', background: 'rgba(0,212,255,0.05)' }}
+          >
+            <Sparkles size={13} />
+            {suggestFAQs.isPending ? 'Generating...' : 'AI suggest safe FAQs'}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => updateFAQs.mutate(faqs, { onSuccess: () => setFaqDirty(false) })}
+            disabled={updateFAQs.isPending || !faqDirty}
+            className="text-[12px] px-3 py-1.5 rounded transition-all"
+            style={{
+              background: updateFAQs.isSuccess && !faqDirty ? 'rgba(0,212,255,0.1)' : '#00D4FF',
+              color: updateFAQs.isSuccess && !faqDirty ? '#00D4FF' : '#0A0A0B',
+              opacity: !faqDirty && !updateFAQs.isSuccess ? 0.4 : 1,
+              cursor: !faqDirty ? 'default' : 'pointer',
+              borderRadius: 6,
+            }}
+          >
+            {updateFAQs.isPending ? 'Saving...' : updateFAQs.isSuccess && !faqDirty ? 'Saved ✓' : 'Save FAQs'}
+          </button>
+          {updateFAQs.isError && (
+            <span className="text-[12px]" style={{ color: '#EF4444' }}>Failed to save</span>
+          )}
         </div>
       </Card>
 
