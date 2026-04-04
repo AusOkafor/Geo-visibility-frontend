@@ -278,15 +278,18 @@ export function SettingsPage() {
             />
           </div>
           <div>
-            <label className="text-[12px] block mb-1" style={{ color: '#94a3b8' }}>Product category</label>
+            <label className="text-[12px] block mb-1" style={{ color: '#94a3b8' }}>Primary product category</label>
             <input
               type="text"
               value={category}
-              placeholder="e.g. leather wallets, handbags, accessories"
+              placeholder="e.g. furniture, fine jewelry, skincare"
               onChange={(e) => { setCategory(e.target.value); setProfileDirty(true); }}
               className="w-full text-[13px] px-3 py-2 rounded"
               style={{ background: '#0d0d10', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff' }}
             />
+            <p className="text-[11px] mt-1.5" style={{ color: '#475569' }}>
+              Enter your main product type as a short phrase — e.g. <span style={{ color: '#64748b' }}>furniture</span>, <span style={{ color: '#64748b' }}>women's clothing</span>, <span style={{ color: '#64748b' }}>home fragrance</span>. For stores with multiple product types, use the broadest term that covers your range. This drives how AI scan queries are generated.
+            </p>
           </div>
         </div>
         <div className="mt-4 flex items-center gap-3">
