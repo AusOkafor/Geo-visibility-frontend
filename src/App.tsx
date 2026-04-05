@@ -31,6 +31,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Redirects to /admin if no admin API key is present.
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const key = localStorage.getItem('admin_api_key');
+  if (!key) return <Navigate to="/admin" replace />;
+  return <>{children}</>;
+}
+
 function DashboardLayout() {
   return (
     <ProtectedRoute>
@@ -63,9 +70,9 @@ export default function App() {
           <Route
             path="/admin/spot-checks"
             element={
-              localStorage.getItem('admin_api_key')
-                ? <AdminSpotChecksPage />
-                : <Navigate to="/admin" replace />
+              <AdminRoute>
+                <AdminSpotChecksPage />
+              </AdminRoute>
             }
           />
         </Routes>

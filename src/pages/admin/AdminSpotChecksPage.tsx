@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { LogOut, RefreshCw, Plus } from 'lucide-react';
@@ -260,10 +260,12 @@ export function AdminSpotChecksPage() {
   });
 
   // Redirect to login on 401/503
-  if (isError && (error as Error).message === 'UNAUTHORIZED') {
-    localStorage.removeItem('admin_api_key');
-    navigate('/admin', { replace: true });
-  }
+  useEffect(() => {
+    if (isError && (error as Error).message === 'UNAUTHORIZED') {
+      localStorage.removeItem('admin_api_key');
+      navigate('/admin', { replace: true });
+    }
+  }, [isError, error, navigate]);
 
   function handleLogout() {
     localStorage.removeItem('admin_api_key');
