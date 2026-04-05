@@ -255,12 +255,29 @@ function FixCard({
 
 // Authority guidance card — shown when no authority fixes have been generated yet.
 // Turns manual guidance into copy-ready execution tools so users can act immediately.
+function subredditForCategory(category: string): string {
+  const c = category.toLowerCase();
+  if (c.includes('furniture') || c.includes('home furnishing') || c.includes('interior')) return 'malelivingspace';
+  if (c.includes('jewelry') || c.includes('jewellery')) return 'jewelry';
+  if (c.includes('skincare') || c.includes('beauty') || c.includes('cosmetic')) return 'SkincareAddiction';
+  if (c.includes('clothing') || c.includes('fashion') || c.includes('apparel')) return 'femalefashionadvice';
+  if (c.includes('fitness') || c.includes('gym') || c.includes('supplement')) return 'Fitness';
+  if (c.includes('pet')) return 'dogs';
+  if (c.includes('food') || c.includes('coffee') || c.includes('tea')) return 'Coffee';
+  if (c.includes('tech') || c.includes('gadget') || c.includes('electronic')) return 'gadgets';
+  if (c.includes('candle') || c.includes('fragrance')) return 'candlemaking';
+  if (c.includes('outdoor') || c.includes('garden')) return 'gardening';
+  return 'BuyItForLife';
+}
+
 function AuthorityGuidanceCard({
   brandName,
+  category,
   topCompetitor,
   topQuery,
 }: {
   brandName: string;
+  category: string;
   topCompetitor: string;
   topQuery: string;
 }) {
@@ -273,9 +290,13 @@ function AuthorityGuidanceCard({
     });
   }
 
-  const redditPost = `Hey r/jewelry!\n\nLooking for ${topQuery || 'fine jewelry'} recommendations — has anyone tried ${brandName}? They do 14K/18K gold pieces and I'm comparing them vs ${topCompetitor || 'other boutique brands'}. Curious about quality for the price point.\n\nAny experience with them?`;
+  const subreddit = subredditForCategory(category);
+  const categoryLabel = category || 'products';
+  const fallbackQuery = topQuery || categoryLabel;
 
-  const outreachEmail = `Subject: Quick addition for your "${topQuery || 'fine jewelry'}" article\n\nHi,\n\nI came across your piece on ${topQuery || 'fine jewelry brands'} and noticed ${brandName} wasn't included.\n\nWe offer fine jewelry in 14K/18K gold starting at $85 — specifically positioned for buyers searching for affordable luxury. Happy to share more details if you're ever updating the article.\n\nBest,\n[Your Name]\n${brandName}`;
+  const redditPost = `Hey r/${subreddit}!\n\nLooking for ${fallbackQuery} recommendations — has anyone tried ${brandName}? I'm comparing them vs ${topCompetitor || 'other brands'} and curious about quality for the price point.\n\nAny experience with them?`;
+
+  const outreachEmail = `Subject: Quick addition for your "${fallbackQuery}" article\n\nHi,\n\nI came across your piece on ${fallbackQuery} and noticed ${brandName} wasn't included.\n\nWe specialise in ${categoryLabel} and would love to be considered for your next update. Happy to share more details if useful.\n\nBest,\n[Your Name]\n${brandName}`;
 
   return (
     <div
@@ -313,7 +334,7 @@ function AuthorityGuidanceCard({
         >
           <div className="flex items-start justify-between gap-3 mb-2">
             <div>
-              <p className="text-[13px] font-medium text-white">Post in r/jewelry</p>
+              <p className="text-[13px] font-medium text-white">Post in r/{subreddit}</p>
               <p className="text-[11px] mt-0.5" style={{ color: '#475569' }}>
                 Perplexity indexes Reddit fast — a single post can appear in AI answers within days
               </p>
@@ -360,7 +381,7 @@ function AuthorityGuidanceCard({
             </button>
           </div>
           <p className="text-[11px] px-2 py-1.5 rounded font-mono leading-relaxed line-clamp-2" style={{ background: 'rgba(0,0,0,0.3)', color: '#475569' }}>
-            Subject: Quick addition for your "{topQuery || 'fine jewelry'}" article
+            Subject: Quick addition for your "{fallbackQuery}" article
           </p>
         </div>
 
@@ -420,6 +441,7 @@ export function FixesPage() {
 
   // Authority card data
   const brandName = merchant?.brand_name ?? '';
+  const category = merchant?.category ?? '';
   const topCompetitor = competitors?.[0]?.name ?? '';
   const topQuery = (queryGaps ?? [])[0]?.query ?? '';
 
@@ -560,6 +582,7 @@ export function FixesPage() {
                   {isAuthorityLayer && !hasAuthorityFix && (
                     <AuthorityGuidanceCard
                       brandName={brandName}
+                      category={category}
                       topCompetitor={topCompetitor}
                       topQuery={topQuery}
                     />
