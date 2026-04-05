@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, ShieldCheck, ShieldAlert, Copy } from 'lucide-react';
 import * as adminApi from '../../lib/adminApi';
 import type { SpotCheck } from '../../lib/adminApi';
 
@@ -139,6 +139,55 @@ export function AdminVerifyModal({ spotCheck, onClose }: Props) {
               }}
             >
               {spotCheck.ai_response || <span style={{ color: '#64748B' }}>No response stored</span>}
+            </div>
+          </div>
+
+          {/* Integrity proof */}
+          <div
+            className="rounded p-3 flex flex-col gap-2"
+            style={{
+              background: spotCheck.integrity_valid ? '#0A1A0A' : spotCheck.response_hash ? '#1A0A0A' : '#161618',
+              border: `1px solid ${spotCheck.integrity_valid ? 'rgba(74,222,128,0.2)' : spotCheck.response_hash ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.06)'}`,
+            }}
+          >
+            <div className="flex items-center gap-2">
+              {spotCheck.integrity_valid ? (
+                <ShieldCheck size={14} style={{ color: '#4ADE80', flexShrink: 0 }} />
+              ) : (
+                <ShieldAlert size={14} style={{ color: spotCheck.response_hash ? '#EF4444' : '#64748B', flexShrink: 0 }} />
+              )}
+              <span
+                className="text-[12px] font-semibold"
+                style={{ color: spotCheck.integrity_valid ? '#4ADE80' : spotCheck.response_hash ? '#EF4444' : '#64748B' }}
+              >
+                {spotCheck.integrity_valid
+                  ? 'Response integrity verified'
+                  : spotCheck.response_hash
+                  ? 'Integrity check failed — response may have been modified'
+                  : 'No integrity hash (pre-migration record)'}
+              </span>
+            </div>
+
+            {spotCheck.response_hash && (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono" style={{ color: '#475569', wordBreak: 'break-all' }}>
+                  SHA256: {spotCheck.response_hash}
+                </span>
+                <button
+                  onClick={() => navigator.clipboard.writeText(spotCheck.response_hash)}
+                  title="Copy hash"
+                  className="flex-shrink-0 hover:opacity-70 transition-opacity"
+                  style={{ color: '#475569' }}
+                >
+                  <Copy size={11} />
+                </button>
+              </div>
+            )}
+
+            <div className="flex gap-4 text-[11px]" style={{ color: '#475569' }}>
+              {spotCheck.model_version && (
+                <span>Model: <span className="font-mono" style={{ color: '#94A3B8' }}>{spotCheck.model_version}</span></span>
+              )}
             </div>
           </div>
 

@@ -23,6 +23,10 @@ export interface SpotCheck {
   verified_by_email: string | null;
   verified_at: string | null;
   created_at: string;
+  // Integrity fields — sourced from the originating citation_record.
+  response_hash: string;
+  model_version: string;
+  integrity_valid: boolean;
 }
 
 export interface AccuracyMetric {
