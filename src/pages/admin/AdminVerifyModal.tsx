@@ -80,14 +80,32 @@ export function AdminVerifyModal({ spotCheck, onClose }: Props) {
         {/* Header */}
         <div
           className="flex items-center justify-between px-5 py-4 flex-shrink-0"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          style={{
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            background: isVerified ? '#0A1A0A' : '#0A0F1A',
+          }}
         >
           <div>
-            <p className="text-white font-semibold text-[14px]">
-              Spot check #{spotCheck.id}
-            </p>
-            <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>
+            <div className="flex items-center gap-2 mb-0.5">
+              <p className="text-white font-semibold text-[14px]">
+                Spot check #{spotCheck.id}
+              </p>
+              <span
+                className="px-2 py-0.5 rounded text-[10px] font-semibold"
+                style={
+                  isVerified
+                    ? { background: '#0F2A1A', color: '#4ADE80', border: '1px solid rgba(74,222,128,0.25)' }
+                    : { background: '#1A1A0A', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)' }
+                }
+              >
+                {isVerified ? 'Verified' : 'Needs verification'}
+              </span>
+            </div>
+            <p className="text-[12px]" style={{ color: '#64748B' }}>
               Merchant {spotCheck.merchant_id} · {PLATFORM_LABELS[spotCheck.platform] ?? spotCheck.platform}
+              {spotCheck.verified_by_email && (
+                <span> · Verified by {spotCheck.verified_by_email}</span>
+              )}
             </p>
           </div>
           <button onClick={onClose} className="text-[#64748B] hover:text-white transition-colors">

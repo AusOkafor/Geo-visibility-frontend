@@ -416,7 +416,7 @@ export function AdminSpotChecksPage() {
               <table className="w-full text-[12px]" style={{ borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#0D0D0F', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                    {['ID', 'Query', 'Platform', 'Detected brands', 'Precision', 'Recall', 'F1', 'Status', 'Created'].map((h) => (
+                    {['ID', 'Query', 'Platform', 'Detected', 'Precision', 'Recall', 'F1', 'Status', 'Created', ''].map((h) => (
                       <th key={h} className="text-left py-3 px-4 font-medium" style={{ color: '#64748B' }}>
                         {h}
                       </th>
@@ -443,7 +443,7 @@ export function AdminSpotChecksPage() {
                         </span>
                       </td>
                       <td className="py-3 px-4" style={{ color: '#94A3B8' }}>
-                        {sc.detected_brands?.length ?? 0}
+                        {sc.detected_brands?.length ?? 0} brands
                       </td>
                       <td className="py-3 px-4 text-white">{pct(sc.precision)}</td>
                       <td className="py-3 px-4 text-white">{pct(sc.recall)}</td>
@@ -469,6 +469,19 @@ export function AdminSpotChecksPage() {
                       </td>
                       <td className="py-3 px-4" style={{ color: '#475569' }}>
                         {new Date(sc.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => setSelected(sc)}
+                          className="px-3 py-1 rounded text-[11px] font-semibold transition-opacity hover:opacity-80"
+                          style={
+                            sc.status === 'pending'
+                              ? { background: '#00D4FF22', color: '#00D4FF', border: '1px solid rgba(0,212,255,0.3)' }
+                              : { background: '#1E293B', color: '#64748B', border: '1px solid rgba(255,255,255,0.08)' }
+                          }
+                        >
+                          {sc.status === 'pending' ? 'Verify' : 'View'}
+                        </button>
                       </td>
                     </tr>
                   ))}
