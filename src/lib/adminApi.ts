@@ -88,3 +88,88 @@ export const verifySpotCheck = (
 
 export const getAccuracyMetrics = (merchantId: number): Promise<AccuracyMetric[]> =>
   adminRequest(`/spot-checks/accuracy?merchant_id=${merchantId}`);
+
+// ─── Citation Verifier ────────────────────────────────────────────────────────
+
+export interface HallucinationFlag {
+  brand: string;
+  occurrences: number;
+  reason: string;
+}
+
+export interface VerificationResult {
+  id: number;
+  citation_record_id: number;
+  merchant_id: number;
+  query: string;
+  platform: string;
+  original_response: string;
+  re_query_response: string;
+  similarity_score: number;
+  response_changed: boolean;
+  hallucinations: HallucinationFlag[];
+  hallucination_count: number;
+  is_authentic: boolean;
+}
+
+export interface PlatformResult {
+  brands: string[];
+  mentioned: boolean;
+  response: string;
+  error?: string;
+}
+
+export interface CrossPlatformResult {
+  query: string;
+  merchant_id: number;
+  consistency_score: number;
+  shared_brands: string[];
+  platforms: Record<string, PlatformResult>;
+}
+
+export interface VerificationRecord {
+  id: number;
+  citation_record_id: number;
+  merchant_id: number;
+  verified_at: string;
+  original_query: string;
+  original_platform: string;
+  original_response: string;
+  re_query_response: string;
+  similarity_score: number | null;
+  response_changed: boolean;
+  hallucination_flags: HallucinationFlag[];
+  hallucination_count: number;
+  cross_platform_results: Record<string, PlatformResult>;
+  consistency_score: number | null;
+  is_authentic: boolean;
+  verification_notes: string;
+}
+
+export interface StabilityRecord {
+  id: number;
+  merchant_id: number;
+  query_text: string;
+  platform: string;
+  first_seen_at: string;
+  last_checked_at: string;
+  check_count: number;
+  avg_similarity: number;
+  min_similarity: number;
+  drift_detected: boolean;
+}
+
+export const verifyCitation = (citationId: number, merchantId: number): Promise<VerificationResult> =>
+  adminRequest(`/verifier/citations/${citationId}?merchant_id=${merchantId}`, { method: 'POST' });
+
+export const crossPlatform = (query: string, brandName: string, merchantId: number): Promise<CrossPlatformResult> =>
+  adminRequest('/verifier/cross-platform', {
+    method: 'POST',
+    body: JSON.stringify({ query, brand_name: brandName, merchant_id: merchantId }),
+  });
+
+export const listVerifications = (merchantId: number, limit = 50): Promise<VerificationRecord[]> =>
+  adminRequest(`/verifier/history?merchant_id=${merchantId}&limit=${limit}`);
+
+export const getStability = (merchantId: number, limit = 50): Promise<StabilityRecord[]> =>
+  adminRequest(`/verifier/stability?merchant_id=${merchantId}&limit=${limit}`);

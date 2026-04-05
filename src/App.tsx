@@ -13,6 +13,8 @@ import { FixDetailPage } from './pages/dashboard/FixDetailPage';
 import { SettingsPage } from './pages/dashboard/SettingsPage';
 import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 import { AdminSpotChecksPage } from './pages/admin/AdminSpotChecksPage';
+import { AdminCitationVerifierPage } from './pages/admin/AdminCitationVerifierPage';
+import { AdminShell } from './pages/admin/AdminShell';
 import { Toaster } from 'sonner';
 
 const queryClient = new QueryClient({
@@ -85,7 +87,19 @@ export default function App() {
             path="/admin/spot-checks"
             element={
               <AdminRoute>
-                <AdminSpotChecksPage />
+                <AdminShell>
+                  <AdminSpotChecksPage />
+                </AdminShell>
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/verifier"
+            element={
+              <AdminRoute>
+                <AdminShell>
+                  <AdminCitationVerifierPage />
+                </AdminShell>
               </AdminRoute>
             }
           />

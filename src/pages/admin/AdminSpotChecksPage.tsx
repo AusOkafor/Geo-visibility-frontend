@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { LogOut, RefreshCw, Plus } from 'lucide-react';
+import { RefreshCw, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import * as adminApi from '../../lib/adminApi';
 import type { SpotCheck } from '../../lib/adminApi';
@@ -265,11 +265,6 @@ export function AdminSpotChecksPage() {
     }
   }, [isError, error, navigate]);
 
-  function handleLogout() {
-    localStorage.removeItem('admin_api_key');
-    navigate('/admin');
-  }
-
   const filtered = (data ?? []).filter((sc) => {
     if (statusFilter === 'all') return true;
     return sc.status === statusFilter;
@@ -279,30 +274,8 @@ export function AdminSpotChecksPage() {
   const verifiedCount = (data ?? []).filter((sc) => sc.status === 'verified').length;
 
   return (
-    <div className="min-h-screen" style={{ background: '#0A0A0B' }}>
-      {/* Top bar */}
-      <header
-        className="flex items-center justify-between px-6"
-        style={{ height: 52, background: '#0D0D0F', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
-      >
-        <span className="flex items-baseline gap-0">
-          <span className="font-bold font-mono text-[17px]" style={{ color: '#00D4FF' }}>GEO</span>
-          <span className="text-[15px] font-normal" style={{ color: '#64748B' }}>.visibility</span>
-          <span className="ml-2 text-[11px] px-1.5 py-0.5 rounded font-mono" style={{ background: '#1E1A0A', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }}>
-            admin
-          </span>
-        </span>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-1.5 text-[12px] transition-colors hover:text-white"
-          style={{ color: '#64748B' }}
-        >
-          <LogOut size={14} />
-          Sign out
-        </button>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-6 py-6 flex flex-col gap-6">
+    <div className="p-8">
+      <div className="max-w-6xl flex flex-col gap-6">
         {/* Filters row */}
         <div className="flex items-end gap-4 flex-wrap">
           <div>
@@ -485,7 +458,7 @@ export function AdminSpotChecksPage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       {selected && (
         <AdminVerifyModal
