@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Plus, ShieldCheck, ShieldAlert, Copy } from 'lucide-react';
+import { toast } from 'sonner';
 import * as adminApi from '../../lib/adminApi';
 import type { SpotCheck } from '../../lib/adminApi';
 
@@ -31,21 +32,33 @@ export function AdminVerifyModal({ spotCheck, onClose }: Props) {
   const verify = useMutation({
     mutationFn: () =>
       adminApi.verifySpotCheck(spotCheck.id, manualBrands, email),
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['admin-spot-checks'] });
       qc.invalidateQueries({ queryKey: ['admin-accuracy'] });
+      toast.success(
+        `Verified — F1 ${data.f1_score != null ? (data.f1_score * 100).toFixed(1) + '%' : 'n/a'}`
+      );
       onClose();
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Verification failed');
     },
   });
 
   function addBrand() {
     const trimmed = brandInput.trim();
-    if (!trimmed) return;
-    // Support comma-separated input
+    if (!trimmed) {
+      toast.warning('Enter a brand name first');
+      return;
+    }
     const parts = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
     setManualBrands((prev) => {
       const existing = new Set(prev.map((b) => b.toLowerCase()));
-      return [...prev, ...parts.filter((p) => !existing.has(p.toLowerCase()))];
+      const added = parts.filter((p) => !existing.has(p.toLowerCase()));
+      const skipped = parts.length - added.length;
+      if (skipped > 0) toast.warning(`${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`);
+      if (added.length > 0) toast.success(`Added ${added.join(', ')}`);
+      return [...prev, ...added];
     });
     setBrandInput('');
   }
@@ -174,7 +187,10 @@ export function AdminVerifyModal({ spotCheck, onClose }: Props) {
                   SHA256: {spotCheck.response_hash}
                 </span>
                 <button
-                  onClick={() => navigator.clipboard.writeText(spotCheck.response_hash)}
+                  onClick={() => {
+                    navigator.clipboard.writeText(spotCheck.response_hash);
+                    toast.success('Hash copied to clipboard');
+                  }}
                   title="Copy hash"
                   className="flex-shrink-0 hover:opacity-70 transition-opacity"
                   style={{ color: '#475569' }}
@@ -322,11 +338,6 @@ export function AdminVerifyModal({ spotCheck, onClose }: Props) {
             </div>
           )}
 
-          {verify.isError && (
-            <p className="text-[12px]" style={{ color: '#EF4444' }}>
-              {(verify.error as Error).message}
-            </p>
-          )}
         </div>
 
         {/* Footer */}

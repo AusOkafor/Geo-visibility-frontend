@@ -13,6 +13,7 @@ import { FixDetailPage } from './pages/dashboard/FixDetailPage';
 import { SettingsPage } from './pages/dashboard/SettingsPage';
 import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 import { AdminSpotChecksPage } from './pages/admin/AdminSpotChecksPage';
+import { Toaster } from 'sonner';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,6 +59,19 @@ function DashboardLayout() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <Toaster
+        position="top-right"
+        theme="dark"
+        toastOptions={{
+          style: {
+            background: '#161B22',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: '#E2E8F0',
+            fontFamily: 'DM Sans, sans-serif',
+            fontSize: '13px',
+          },
+        }}
+      />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />

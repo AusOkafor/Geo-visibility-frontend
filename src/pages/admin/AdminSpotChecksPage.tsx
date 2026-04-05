@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { LogOut, RefreshCw, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import * as adminApi from '../../lib/adminApi';
 import type { SpotCheck } from '../../lib/adminApi';
 import { AdminVerifyModal } from './AdminVerifyModal';
@@ -47,9 +48,13 @@ function CreateSpotCheckForm({ onCreated }: { onCreated: () => void }) {
     mutationFn: () =>
       adminApi.createSpotCheck(Number(merchantId), Number(citationId)),
     onSuccess: () => {
+      toast.success('Spot check created');
       setMerchantId('');
       setCitationId('');
       onCreated();
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to create spot check');
     },
   });
 
@@ -90,16 +95,6 @@ function CreateSpotCheckForm({ onCreated }: { onCreated: () => void }) {
           {create.isPending ? 'Creating...' : 'Create'}
         </button>
       </div>
-      {create.isError && (
-        <p className="text-[12px] mt-2" style={{ color: '#EF4444' }}>
-          {(create.error as Error).message}
-        </p>
-      )}
-      {create.isSuccess && (
-        <p className="text-[12px] mt-2" style={{ color: '#4ADE80' }}>
-          Spot check created.
-        </p>
-      )}
     </div>
   );
 }
@@ -345,7 +340,7 @@ export function AdminSpotChecksPage() {
           </div>
 
           <button
-            onClick={() => refetch()}
+            onClick={() => { refetch(); toast.info('Refreshing…'); }}
             className="flex items-center gap-1.5 rounded px-3 py-2 text-[12px] font-medium transition-colors hover:text-white"
             style={{ color: '#64748B', background: '#0D0D0F', border: '1px solid rgba(255,255,255,0.07)' }}
           >
