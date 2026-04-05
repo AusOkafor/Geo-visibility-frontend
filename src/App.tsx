@@ -11,6 +11,8 @@ import { CompetitorsPage } from './pages/dashboard/CompetitorsPage';
 import { FixesPage } from './pages/dashboard/FixesPage';
 import { FixDetailPage } from './pages/dashboard/FixDetailPage';
 import { SettingsPage } from './pages/dashboard/SettingsPage';
+import { AdminLoginPage } from './pages/admin/AdminLoginPage';
+import { AdminSpotChecksPage } from './pages/admin/AdminSpotChecksPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,6 +58,16 @@ export default function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/dashboard/*" element={<DashboardLayout />} />
+          {/* Admin — completely separate from merchant dashboard */}
+          <Route path="/admin" element={<AdminLoginPage />} />
+          <Route
+            path="/admin/spot-checks"
+            element={
+              localStorage.getItem('admin_api_key')
+                ? <AdminSpotChecksPage />
+                : <Navigate to="/admin" replace />
+            }
+          />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
