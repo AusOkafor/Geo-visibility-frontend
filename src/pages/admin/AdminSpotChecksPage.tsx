@@ -56,7 +56,7 @@ function CreateSpotCheckForm({ onCreated }: { onCreated: () => void }) {
   return (
     <div
       className="rounded-lg p-4"
-      style={{ background: '#0D0D0F', border: '1px solid rgba(255,255,255,0.07)' }}
+      style={{ background: '#161B22', border: '1px solid rgba(255,255,255,0.1)' }}
     >
       <p className="text-white font-semibold text-[13px] mb-3">Create spot check</p>
       <div className="flex items-end gap-3 flex-wrap">
@@ -115,7 +115,10 @@ function AccuracyPanel({ merchantId }: { merchantId: number }) {
 
   if (isLoading) {
     return (
-      <div className="rounded-lg p-4 animate-pulse" style={{ background: '#0D0D0F', border: '1px solid rgba(255,255,255,0.07)', height: 80 }} />
+      <div className="rounded-lg p-4 flex items-center gap-2" style={{ background: '#161B22', border: '1px solid rgba(255,255,255,0.07)', height: 72 }}>
+        <RefreshCw size={13} className="animate-spin flex-shrink-0" style={{ color: '#64748B' }} />
+        <span className="text-[12px]" style={{ color: '#64748B' }}>Loading accuracy metrics…</span>
+      </div>
     );
   }
 
@@ -123,9 +126,9 @@ function AccuracyPanel({ merchantId }: { merchantId: number }) {
     return (
       <div
         className="rounded-lg p-4"
-        style={{ background: '#0D0D0F', border: '1px solid rgba(255,255,255,0.07)' }}
+        style={{ background: '#161B22', border: '1px solid rgba(255,255,255,0.07)' }}
       >
-        <p className="text-[13px]" style={{ color: '#64748B' }}>No accuracy metrics yet — the daily validation worker generates these.</p>
+        <p className="text-[13px]" style={{ color: '#64748B' }}>No accuracy metrics yet — the daily validation worker generates these after running overnight.</p>
       </div>
     );
   }
@@ -373,9 +376,13 @@ export function AdminSpotChecksPage() {
           </p>
 
           {isLoading && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2 mb-1">
+                <RefreshCw size={13} className="animate-spin" style={{ color: '#64748B' }} />
+                <span className="text-[12px]" style={{ color: '#64748B' }}>Loading from server…</span>
+              </div>
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="rounded-lg animate-pulse" style={{ height: 56, background: '#0D0D0F' }} />
+                <div key={i} className="rounded-lg animate-pulse" style={{ height: 56, background: '#1E293B' }} />
               ))}
             </div>
           )}
@@ -390,13 +397,18 @@ export function AdminSpotChecksPage() {
           )}
 
           {!isLoading && !isError && parsedMerchantId <= 0 && (
-            <p className="text-[13px]" style={{ color: '#64748B' }}>Enter a merchant ID to load spot checks.</p>
+            <div className="rounded-lg p-5 text-center" style={{ background: '#161B22', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <p className="text-[13px]" style={{ color: '#64748B' }}>Enter a merchant ID above to load spot checks.</p>
+            </div>
           )}
 
           {!isLoading && !isError && parsedMerchantId > 0 && filtered.length === 0 && (
-            <p className="text-[13px]" style={{ color: '#64748B' }}>
-              No {statusFilter !== 'all' ? statusFilter : ''} spot checks found.
-            </p>
+            <div className="rounded-lg p-5 text-center" style={{ background: '#161B22', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <p className="text-[13px]" style={{ color: '#64748B' }}>
+                No {statusFilter !== 'all' ? statusFilter + ' ' : ''}spot checks for merchant {parsedMerchantId}.<br />
+                <span className="text-[12px]" style={{ color: '#475569' }}>Create one above using a citation record ID.</span>
+              </p>
+            </div>
           )}
 
           {filtered.length > 0 && (
