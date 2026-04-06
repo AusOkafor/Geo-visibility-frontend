@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShieldCheck, ShieldAlert, RefreshCw, GitCompare,
   AlertTriangle, TrendingDown, CheckCircle2, XCircle, ChevronDown, ChevronUp,
@@ -381,17 +381,20 @@ function CrossPlatformPanel() {
 
 function HistoryPanel() {
   const [merchantId, setMerchantId] = useState('');
-  const [activeId, setActiveId] = useState<string>('');
+  const [records, setRecords] = useState<VerificationRecord[] | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { data: records, isLoading, refetch } = useQuery<VerificationRecord[]>({
-    queryKey: ['verifier-history', activeId],
-    queryFn: () => adminApi.listVerifications(Number(activeId) || 0),
-    enabled: false,
-  });
-
-  function load() {
-    setActiveId(merchantId);
-    refetch();
+  async function load() {
+    setIsLoading(true);
+    try {
+      const data = await adminApi.listVerifications(Number(merchantId) || 0);
+      setRecords(data);
+      if (data.length === 0) toast.info('No verification runs found — run a Re-Query Verification first');
+    } catch (err) {
+      toast.error((err as Error).message || 'Failed to load history');
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -419,9 +422,9 @@ function HistoryPanel() {
         </div>
       </div>
 
-      {records && (
+      {records !== null && (
         records.length === 0 ? (
-          <p className="text-[13px]" style={{ color: '#64748B' }}>No verification runs found.</p>
+          <p className="text-[13px]" style={{ color: '#64748B' }}>No verification runs found. Run a Re-Query Verification first, then reload here.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {records.map((r) => (
@@ -469,17 +472,20 @@ function HistoryPanel() {
 
 function StabilityPanel() {
   const [merchantId, setMerchantId] = useState('');
-  const [activeId, setActiveId] = useState<string>('');
+  const [records, setRecords] = useState<StabilityRecord[] | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { data: records, isLoading, refetch } = useQuery<StabilityRecord[]>({
-    queryKey: ['verifier-stability', activeId],
-    queryFn: () => adminApi.getStability(Number(activeId) || 0),
-    enabled: false,
-  });
-
-  function load() {
-    setActiveId(merchantId);
-    refetch();
+  async function load() {
+    setIsLoading(true);
+    try {
+      const data = await adminApi.getStability(Number(merchantId) || 0);
+      setRecords(data);
+      if (data.length === 0) toast.info('No stability records yet — run Re-Query Verifications to build history');
+    } catch (err) {
+      toast.error((err as Error).message || 'Failed to load stability data');
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -507,9 +513,9 @@ function StabilityPanel() {
         </div>
       </div>
 
-      {records && (
+      {records !== null && (
         records.length === 0 ? (
-          <p className="text-[13px]" style={{ color: '#64748B' }}>No stability records found.</p>
+          <p className="text-[13px]" style={{ color: '#64748B' }}>No stability records yet. Run Re-Query Verifications to build history.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {records.map((r) => (
