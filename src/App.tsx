@@ -14,6 +14,7 @@ import { SettingsPage } from './pages/dashboard/SettingsPage';
 import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 import { AdminSpotChecksPage } from './pages/admin/AdminSpotChecksPage';
 import { AdminCitationVerifierPage } from './pages/admin/AdminCitationVerifierPage';
+import { AdminReviewDetectorPage } from './pages/admin/AdminReviewDetectorPage';
 import { AdminShell } from './pages/admin/AdminShell';
 import { Toaster } from 'sonner';
 
@@ -99,6 +100,16 @@ export default function App() {
               <AdminRoute>
                 <AdminShell>
                   <AdminCitationVerifierPage />
+                </AdminShell>
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/reviews"
+            element={
+              <AdminRoute>
+                <AdminShell>
+                  <AdminReviewDetectorPage />
                 </AdminShell>
               </AdminRoute>
             }

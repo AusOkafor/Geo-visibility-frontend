@@ -173,3 +173,25 @@ export const listVerifications = (merchantId: number, limit = 50): Promise<Verif
 
 export const getStability = (merchantId: number, limit = 50): Promise<StabilityRecord[]> =>
   adminRequest(`/verifier/stability?merchant_id=${merchantId}&limit=${limit}`);
+
+// ─── Review Detector ──────────────────────────────────────────────────────────
+
+export interface MerchantReviewStatus {
+  merchant_id: number;
+  shop_domain: string;
+  brand_name: string;
+  review_app: string | null;
+  avg_rating: number | null;
+  total_reviews: number;
+  review_schema_injected: boolean;
+  reviews_last_scanned_at: string | null;
+}
+
+export const listMerchantReviews = (): Promise<MerchantReviewStatus[]> =>
+  adminRequest('/reviews');
+
+export const scanMerchantReviews = (merchantId: number): Promise<{ queued: boolean; merchant_id: number }> =>
+  adminRequest(`/reviews/scan/${merchantId}`, { method: 'POST' });
+
+export const scanAllReviews = (): Promise<{ queued: number; total: number }> =>
+  adminRequest('/reviews/scan-all', { method: 'POST' });
