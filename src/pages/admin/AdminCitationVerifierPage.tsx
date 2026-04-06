@@ -162,6 +162,20 @@ function ReQueryPanel() {
             </div>
           </div>
 
+          {/* Variability callout */}
+          <div
+            className="rounded px-3 py-2 flex items-start gap-2 text-[11px]"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+          >
+            <span style={{ color: '#475569', flexShrink: 0 }}>ℹ</span>
+            <span style={{ color: '#64748B' }}>
+              AI responses are non-deterministic — the same query can return different wording each run.
+              {' '}<span style={{ color: '#94A3B8' }}>75–90% similarity is normal.</span>
+              {' '}Below 60% suggests meaningful drift (model update, ranking shift, or hallucination).
+              {' '}Run multiple verifications to establish a baseline via the Stability tab.
+            </span>
+          </div>
+
           {/* Hallucination flags */}
           {result.hallucinations && result.hallucinations.length > 0 && (
             <div>
