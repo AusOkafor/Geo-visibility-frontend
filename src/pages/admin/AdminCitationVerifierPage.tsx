@@ -95,7 +95,11 @@ function ReQueryPanel() {
     onSuccess: (data) => {
       setResult(data);
       qc.invalidateQueries({ queryKey: ['verifier-history'] });
-      toast.success(data.is_authentic ? 'Citation verified — authentic' : 'Verification complete — review result');
+      if (!data.id) {
+        toast.warning('Verification complete but failed to save — check backend logs');
+      } else {
+        toast.success(data.is_authentic ? 'Citation verified — authentic' : 'Verification complete — review result');
+      }
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Verification failed');
