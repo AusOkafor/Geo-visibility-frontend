@@ -32,7 +32,7 @@ const APP_COLORS: Record<string, string> = {
 };
 
 function appLabel(app: string | null): string {
-  if (!app) return 'Not scanned';
+  if (!app) return 'None detected';
   return APP_LABELS[app] ?? app;
 }
 
@@ -178,7 +178,7 @@ export function AdminReviewDetectorPage() {
         {([
           { id: 'all', label: `All (${list.length})` },
           { id: 'reviews', label: `Has Reviews (${list.filter(m => m.total_reviews > 0).length})` },
-          { id: 'none', label: `No Reviews (${list.filter(m => m.total_reviews === 0 && m.reviews_last_scanned_at).length})` },
+          { id: 'none', label: `No App / No Reviews (${list.filter(m => m.total_reviews === 0 && m.reviews_last_scanned_at).length})` },
           { id: 'pending', label: `Schema Pending (${list.filter(m => m.total_reviews > 0 && !m.review_schema_injected).length})` },
         ] as const).map(({ id, label }) => (
           <button
