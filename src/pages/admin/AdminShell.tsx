@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { ShieldCheck, ClipboardList, LogOut, Star } from 'lucide-react';
+import { ShieldCheck, ClipboardList, LogOut, Star, ClipboardCheck } from 'lucide-react';
 
 interface Props {
   children: React.ReactNode;
@@ -23,6 +23,12 @@ const NAV_ITEMS = [
     icon: Star,
     label: 'Review Detector',
     description: 'Detect apps, inject schema',
+  },
+  {
+    to: '/admin/audit',
+    icon: ClipboardCheck,
+    label: 'Store Audit',
+    description: 'Re-audit merchant store state',
   },
 ];
 

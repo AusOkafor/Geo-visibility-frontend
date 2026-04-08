@@ -195,3 +195,8 @@ export const scanMerchantReviews = (merchantId: number): Promise<{ queued: boole
 
 export const scanAllReviews = (): Promise<{ queued: number; total: number }> =>
   adminRequest('/reviews/scan-all', { method: 'POST' });
+
+// ─── Onboarding Audit ─────────────────────────────────────────────────────────
+
+export const triggerAudit = (merchantId: number): Promise<{ queued: boolean; merchant_id: number }> =>
+  adminRequest(`/audit/${merchantId}`, { method: 'POST' });
