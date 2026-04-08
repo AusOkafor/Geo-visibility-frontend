@@ -1,4 +1,4 @@
-import type { Merchant, VisibilityScore, DailyScore, Competitor, Fix, PlatformSource, QueryGap, BrandRecognition, LiveAnswer, AIReadinessScore, NextAction, VisibilityPipeline, QuickWin, ScanProgress, AuthorityScore } from '../types';
+import type { Merchant, VisibilityScore, DailyScore, Competitor, Fix, PlatformSource, QueryGap, BrandRecognition, LiveAnswer, AIReadinessScore, NextAction, VisibilityPipeline, QuickWin, ScanProgress, AuthorityScore, AuditProgress, ProductAudit, CollectionAudit, PageAudit } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://geo-v-backend.onrender.com/api/v1';
 const API_HOST = import.meta.env.VITE_API_HOST ?? 'https://geo-v-backend.onrender.com';
@@ -117,3 +117,18 @@ export const getFAQSuggestions = (): Promise<MerchantFAQ[]> =>
 
 export const deleteAllMerchantData = (): Promise<{ status: string }> =>
   request('/merchant/data', { method: 'DELETE' });
+
+export const getAuditProgress = (): Promise<AuditProgress> =>
+  request('/audit/progress');
+
+export const getAuditProducts = (): Promise<ProductAudit[]> =>
+  request('/audit/products');
+
+export const getAuditCollections = (): Promise<CollectionAudit[]> =>
+  request('/audit/collections');
+
+export const getAuditPages = (): Promise<PageAudit[]> =>
+  request('/audit/pages');
+
+export const refreshAudit = (): Promise<{ status: string }> =>
+  request('/audit/refresh', { method: 'POST' });

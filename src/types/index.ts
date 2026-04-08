@@ -137,7 +137,7 @@ export interface AuthorityScore {
 
 export interface Fix {
   id: string;
-  fix_type: 'description' | 'faq' | 'schema' | 'listing';
+  fix_type: 'description' | 'faq' | 'schema' | 'listing' | 'collection_description' | 'about_page' | 'size_guide';
   fix_layer: 'structure' | 'content' | 'authority';
   priority: 'high' | 'medium' | 'low';
   title: string;
@@ -148,4 +148,64 @@ export interface Fix {
   status: 'pending' | 'approved' | 'rejected' | 'applied' | 'manual' | 'applying';
   target_gid: string;
   created_at: string;
+}
+
+export interface AuditProgress {
+  merchant_id: string;
+  total_products: number;
+  products_needing_attention: number;
+  total_collections: number;
+  collections_needing_attention: number;
+  total_pages_audited: number;
+  pages_needing_attention: number;
+  overall_completeness_score: number;
+  updated_at?: string;
+}
+
+export interface ProductAudit {
+  id: string;
+  merchant_id: string;
+  product_id: string;
+  product_title: string;
+  product_handle: string;
+  current_description_words: number;
+  missing_material_info: boolean;
+  missing_sizing_info: boolean;
+  missing_care_instructions: boolean;
+  completeness_score: number;
+  needs_attention: boolean;
+  fix_applied: boolean;
+  updated_at: string;
+}
+
+export interface CollectionAudit {
+  id: string;
+  merchant_id: string;
+  collection_id: string;
+  collection_title: string;
+  collection_handle: string;
+  current_description_words: number;
+  product_count: number;
+  ai_description_eligible: boolean;
+  needs_attention: boolean;
+  fix_applied: boolean;
+  updated_at: string;
+}
+
+export interface PageAudit {
+  id: string;
+  merchant_id: string;
+  page_id: string;
+  page_title: string;
+  page_handle: string;
+  page_type: string;
+  word_count: number;
+  faq_question_count: number;
+  about_has_story: boolean;
+  about_has_team: boolean;
+  ai_content_eligible: boolean;
+  needs_attention: boolean;
+  is_placeholder: boolean;
+  fix_applied: boolean;
+  updated_at: string;
 }

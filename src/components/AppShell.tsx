@@ -5,6 +5,7 @@ import {
   BarChart2,
   Users,
   Wrench,
+  ClipboardCheck,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { to: '/dashboard/visibility', icon: BarChart2, label: 'Visibility', end: false },
   { to: '/dashboard/competitors', icon: Users, label: 'Competitors', end: false },
   { to: '/dashboard/fixes', icon: Wrench, label: 'Fixes', end: false },
+  { to: '/dashboard/audit', icon: ClipboardCheck, label: 'Audit', end: false },
   { to: '/dashboard/settings', icon: Settings, label: 'Settings', end: false },
 ];
 
@@ -29,6 +31,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard/visibility': 'AI Visibility',
   '/dashboard/competitors': 'Competitors',
   '/dashboard/fixes': 'Fixes',
+  '/dashboard/audit': 'Content Audit',
   '/dashboard/settings': 'Settings',
 };
 

@@ -11,6 +11,7 @@ import { CompetitorsPage } from './pages/dashboard/CompetitorsPage';
 import { FixesPage } from './pages/dashboard/FixesPage';
 import { FixDetailPage } from './pages/dashboard/FixDetailPage';
 import { SettingsPage } from './pages/dashboard/SettingsPage';
+import { AuditPage } from './pages/dashboard/AuditPage';
 import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 import { AdminSpotChecksPage } from './pages/admin/AdminSpotChecksPage';
 import { AdminCitationVerifierPage } from './pages/admin/AdminCitationVerifierPage';
@@ -53,6 +54,7 @@ function DashboardLayout() {
           <Route path="competitors" element={<CompetitorsPage />} />
           <Route path="fixes" element={<FixesPage />} />
           <Route path="fixes/:id" element={<FixDetailPage />} />
+          <Route path="audit" element={<AuditPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Routes>
       </AppShell>

@@ -132,3 +132,28 @@ export const useUpdateMerchantFAQs = () => {
 
 export const useFAQSuggestions = () =>
   useMutation({ mutationFn: api.getFAQSuggestions });
+
+export const useAuditProgress = () =>
+  useQuery({ queryKey: ['audit-progress'], queryFn: api.getAuditProgress });
+
+export const useAuditProducts = () =>
+  useQuery({ queryKey: ['audit-products'], queryFn: api.getAuditProducts });
+
+export const useAuditCollections = () =>
+  useQuery({ queryKey: ['audit-collections'], queryFn: api.getAuditCollections });
+
+export const useAuditPages = () =>
+  useQuery({ queryKey: ['audit-pages'], queryFn: api.getAuditPages });
+
+export const useRefreshAudit = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.refreshAudit,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['audit-progress'] });
+      qc.invalidateQueries({ queryKey: ['audit-products'] });
+      qc.invalidateQueries({ queryKey: ['audit-collections'] });
+      qc.invalidateQueries({ queryKey: ['audit-pages'] });
+    },
+  });
+};
