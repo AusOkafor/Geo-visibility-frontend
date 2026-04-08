@@ -114,3 +114,6 @@ export const updateMerchantFAQs = (faqs: MerchantFAQ[]): Promise<MerchantFAQ[]> 
 
 export const getFAQSuggestions = (): Promise<MerchantFAQ[]> =>
   request('/merchant/faqs/suggestions');
+
+export const deleteAllMerchantData = (): Promise<{ status: string }> =>
+  request('/merchant/data', { method: 'DELETE' });

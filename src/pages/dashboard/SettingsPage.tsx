@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Store, Plus, Trash2, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useMerchant, useUpdateMerchant, useSocialLinks, useUpdateSocialLinks, useMerchantFAQs, useUpdateMerchantFAQs, useFAQSuggestions } from '../../hooks/useApi';
+import { deleteAllMerchantData } from '../../lib/api';
 import type { MerchantFAQ } from '../../lib/api';
 
 interface ToggleProps {
@@ -115,6 +118,18 @@ export function SettingsPage() {
   }, [savedFAQs]);
   const [disconnectConfirm, setDisconnectConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+
+  const deleteData = useMutation({
+    mutationFn: deleteAllMerchantData,
+    onSuccess: () => {
+      toast.success('All data deleted. You are now signed out.');
+      setTimeout(() => {
+        localStorage.clear();
+        navigate('/');
+      }, 1500);
+    },
+    onError: () => toast.error('Failed to delete data — try again'),
+  });
 
   const [scanFreq, setScanFreq] = useState<'daily' | 'weekly'>(
     () => (localStorage.getItem('settings_scan_freq') as 'daily' | 'weekly') ?? 'daily'
@@ -624,10 +639,12 @@ export function SettingsPage() {
             </p>
             <div className="flex gap-2">
               <button
-                className="text-[13px] px-3 py-2 rounded"
+                onClick={() => deleteData.mutate()}
+                disabled={deleteData.isPending}
+                className="text-[13px] px-3 py-2 rounded disabled:opacity-50"
                 style={{ background: '#EF444422', color: '#EF4444', border: '1px solid #EF444444' }}
               >
-                Yes, delete everything
+                {deleteData.isPending ? 'Deleting...' : 'Yes, delete everything'}
               </button>
               <button
                 onClick={() => setDeleteConfirm(false)}
