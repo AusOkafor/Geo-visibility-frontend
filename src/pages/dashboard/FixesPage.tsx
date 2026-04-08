@@ -193,7 +193,7 @@ function FixCard({
                   <p style={{ color: '#00D4FF' }}>
                     After:{' '}
                     <span className="font-mono">
-                      ~{projectedTotal} citations
+                      {projectedTotal} citations
                     </span>
                   </p>
                 </div>
