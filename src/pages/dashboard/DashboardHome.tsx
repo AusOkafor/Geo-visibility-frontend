@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { X, CheckCircle, Users, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { X, CheckCircle, Users, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
 import {
   AreaChart,
   Area,
@@ -239,7 +239,10 @@ export function DashboardHome() {
 
   useEffect(() => () => stopPolling(), []);
 
+  const profileIncomplete = !merchant?.brand_name || !merchant?.category;
+
   function handleRunScan() {
+    if (profileIncomplete) return;
     triggerScan.mutate(undefined, {
       onSuccess: () => {
         setScanActive(true);
@@ -290,13 +293,14 @@ export function DashboardHome() {
         action={
           <button
             onClick={handleRunScan}
-            disabled={triggerScan.isPending || scanActive}
+            disabled={triggerScan.isPending || scanActive || profileIncomplete}
+            title={profileIncomplete ? 'Complete your store profile in Settings before scanning' : undefined}
             className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium transition-all"
             style={{
-              background: scanActive ? 'rgba(0,212,255,0.08)' : 'rgba(0,212,255,0.12)',
-              border: '1px solid rgba(0,212,255,0.25)',
-              color: scanActive ? '#64748B' : '#00D4FF',
-              cursor: triggerScan.isPending || scanActive ? 'not-allowed' : 'pointer',
+              background: profileIncomplete ? 'rgba(100,116,139,0.08)' : scanActive ? 'rgba(0,212,255,0.08)' : 'rgba(0,212,255,0.12)',
+              border: profileIncomplete ? '1px solid rgba(100,116,139,0.25)' : '1px solid rgba(0,212,255,0.25)',
+              color: profileIncomplete ? '#475569' : scanActive ? '#64748B' : '#00D4FF',
+              cursor: triggerScan.isPending || scanActive || profileIncomplete ? 'not-allowed' : 'pointer',
               opacity: triggerScan.isPending || scanActive ? 0.7 : 1,
             }}
           >
@@ -305,6 +309,31 @@ export function DashboardHome() {
           </button>
         }
       />
+
+      {/* ── Profile incomplete banner ────────────────────────────────────────── */}
+      {profileIncomplete && (
+        <Link to="/settings">
+          <div
+            className="flex items-center gap-3 rounded-[6px] px-4 py-3 mb-4 cursor-pointer transition-opacity hover:opacity-90"
+            style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}
+          >
+            <AlertTriangle size={15} className="flex-shrink-0" style={{ color: '#F59E0B' }} />
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium" style={{ color: '#F59E0B' }}>
+                Complete your store profile before running a scan
+              </p>
+              <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>
+                {!merchant?.brand_name && !merchant?.category
+                  ? 'Brand name and product category are required — '
+                  : !merchant?.brand_name
+                  ? 'Brand name is required — '
+                  : 'Product category is required — '}
+                <span style={{ color: '#F59E0B' }}>Go to Settings →</span>
+              </p>
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* ── Scan banners ─────────────────────────────────────────────────────── */}
       {scanActive && (
