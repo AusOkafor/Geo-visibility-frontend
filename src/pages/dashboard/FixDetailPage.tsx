@@ -222,7 +222,18 @@ export function FixDetailPage() {
                         borderLeft: '3px solid #00D4FF',
                       }}
                     >
-                      {data.fix_type === 'faq' && Array.isArray(data.generated?.faqs) ? (
+                      {data.fix_type === 'faq' && typeof data.generated?.action === 'string' ? (
+                        <div className="space-y-3">
+                          <p className="text-[13px]" style={{ color: '#e2e8f0' }}>{data.generated.action}</p>
+                          <a
+                            href="/settings#faqs"
+                            className="inline-flex items-center gap-1.5 text-[13px] font-medium underline"
+                            style={{ color: '#00D4FF' }}
+                          >
+                            Go to Settings → FAQs →
+                          </a>
+                        </div>
+                      ) : data.fix_type === 'faq' && Array.isArray(data.generated?.faqs) ? (
                         <div className="space-y-4">
                           {data.generated.faqs.map((faq: { question: string; answer: string }, i: number) => (
                             <div key={i}>
@@ -364,10 +375,16 @@ export function FixDetailPage() {
               <div className="text-center py-4">
                 <p className="text-[32px] mb-2">✓</p>
                 <p className="font-medium" style={{ color: '#00D4FF' }}>
-                  {data.fix_type === 'faq' ? 'FAQ added to your schema' : 'Applied to your store'}
+                  {data.fix_type === 'faq' && typeof data.generated?.action === 'string'
+                    ? 'Done — your FAQs will appear in the next schema rebuild'
+                    : data.fix_type === 'faq'
+                    ? 'FAQ added to your schema'
+                    : 'Applied to your store'}
                 </p>
                 <p className="text-[12px] mt-1" style={{ color: '#64748B' }}>
-                  {data.fix_type === 'faq'
+                  {data.fix_type === 'faq' && typeof data.generated?.action === 'string'
+                    ? 'Add or update your FAQs in Settings any time to keep your schema current'
+                    : data.fix_type === 'faq'
                     ? 'FAQPage entity is now live in your JSON-LD schema'
                     : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                 </p>
@@ -633,7 +650,9 @@ export function FixDetailPage() {
                   )}
                 </button>
                 <p className="text-center text-[11px]" style={{ color: '#64748B' }}>
-                  {data.fix_type === 'faq'
+                  {data.fix_type === 'faq' && typeof data.generated?.action === 'string'
+                    ? 'Mark as done after adding your FAQs in Settings'
+                    : data.fix_type === 'faq'
                     ? 'Adds FAQ pairs to your schema so AI can match your answers to buyer queries'
                     : 'Pushes this change directly to your Shopify product description'}
                 </p>
