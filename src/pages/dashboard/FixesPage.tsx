@@ -4,11 +4,10 @@ import { CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { useFixes, useRejectFix, useQueryGaps, useVisibilityScores, useMerchant, useCompetitors, useAuthorityScore } from '../../hooks/useApi';
+import { useFixes, useRejectFix, useQueryGaps, useVisibilityScores } from '../../hooks/useApi';
 import type { Fix, QueryGap } from '../../types';
 
-// Maps fix_layer → the 3-bucket problem frame shown on Visibility page
-// Order: content first (Get Found = FAQ + Description), then structure (Get Understood = Schema)
+// Maps fix_layer → the 2-bucket problem frame shown on Visibility page
 const LAYER_META: Record<string, { label: string; sublabel: string; color: string }> = {
   content: {
     label: 'Layer 1 — Get Found',
@@ -20,19 +19,13 @@ const LAYER_META: Record<string, { label: string; sublabel: string; color: strin
     sublabel: 'AI can\'t properly parse your brand and catalog',
     color: '#A78BFA',
   },
-  authority: {
-    label: 'Layer 3 — Get Trusted',
-    sublabel: 'AI needs external citations before recommending you',
-    color: '#F59E0B',
-  },
 };
-const LAYER_ORDER = ['content', 'structure', 'authority'] as const;
+const LAYER_ORDER = ['content', 'structure'] as const;
 
 // Post-apply message per layer — shows what to do next
 const NEXT_STEP: Record<string, string> = {
   content: 'Content live — apply the schema fix next so AI can parse your brand correctly',
-  structure: 'Schema applied — earn 1 external mention to become citable across all platforms',
-  authority: 'Authority signal added — AI is more likely to cite you now',
+  structure: 'Schema applied — run a new scan to measure your citation improvement',
 };
 
 function FixCard({
@@ -63,11 +56,8 @@ function FixCard({
   const projectedTotal =
     projectedGain !== null ? Math.min(currentCitations + projectedGain, totalQueriesRun) : null;
 
-  // Only show query gaps on content/structure fixes (not authority)
-  const showGaps = layer !== 'authority' && topGaps.length > 0 && fix.status === 'pending';
-
-  // How many of the top query gaps this fix type directly targets
-  const gapsCovered = layer !== 'authority' ? topGaps.filter(g => g.impact === 'high' || g.impact === 'medium').length : 0;
+  const showGaps = topGaps.length > 0 && fix.status === 'pending';
+  const gapsCovered = topGaps.filter(g => g.impact === 'high' || g.impact === 'medium').length;
 
   return (
     <div
@@ -253,179 +243,20 @@ function FixCard({
   );
 }
 
-// Authority guidance card — shown when no authority fixes have been generated yet.
-// Turns manual guidance into copy-ready execution tools so users can act immediately.
-function subredditForCategory(category: string): string {
-  const c = category.toLowerCase();
-  if (c.includes('furniture') || c.includes('home furnishing') || c.includes('interior')) return 'malelivingspace';
-  if (c.includes('jewelry') || c.includes('jewellery')) return 'jewelry';
-  if (c.includes('skincare') || c.includes('beauty') || c.includes('cosmetic')) return 'SkincareAddiction';
-  if (c.includes('clothing') || c.includes('fashion') || c.includes('apparel')) return 'femalefashionadvice';
-  if (c.includes('fitness') || c.includes('gym') || c.includes('supplement')) return 'Fitness';
-  if (c.includes('pet')) return 'dogs';
-  if (c.includes('food') || c.includes('coffee') || c.includes('tea')) return 'Coffee';
-  if (c.includes('tech') || c.includes('gadget') || c.includes('electronic')) return 'gadgets';
-  if (c.includes('candle') || c.includes('fragrance')) return 'candlemaking';
-  if (c.includes('outdoor') || c.includes('garden')) return 'gardening';
-  return 'BuyItForLife';
-}
-
-function AuthorityGuidanceCard({
-  brandName,
-  category,
-  topCompetitor,
-  topQuery,
-}: {
-  brandName: string;
-  category: string;
-  topCompetitor: string;
-  topQuery: string;
-}) {
-  const [copied, setCopied] = useState<string | null>(null);
-
-  function copyToClipboard(text: string, key: string) {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(key);
-      setTimeout(() => setCopied(null), 2000);
-    });
-  }
-
-  const subreddit = subredditForCategory(category);
-  const categoryLabel = category || 'products';
-  const fallbackQuery = topQuery || categoryLabel;
-
-  const redditPost = `Hey r/${subreddit}!\n\nLooking for ${fallbackQuery} recommendations — has anyone tried ${brandName}? I'm comparing them vs ${topCompetitor || 'other brands'} and curious about quality for the price point.\n\nAny experience with them?`;
-
-  const outreachEmail = `Subject: Quick addition for your "${fallbackQuery}" article\n\nHi,\n\nI came across your piece on ${fallbackQuery} and noticed ${brandName} wasn't included.\n\nWe specialise in ${categoryLabel} and would love to be considered for your next update. Happy to share more details if useful.\n\nBest,\n[Your Name]\n${brandName}`;
-
-  return (
-    <div
-      className="rounded-[6px] p-5"
-      style={{ background: '#111113', border: '1px solid rgba(245,158,11,0.2)' }}
-    >
-      <div className="flex items-center gap-2 mb-3">
-        <span
-          className="text-[11px] px-2 py-0.5 rounded"
-          style={{ border: '1px solid rgba(245,158,11,0.35)', color: '#F59E0B' }}
-        >
-          Citation Builder
-        </span>
-        <span
-          className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-          style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
-        >
-          Required to become citable
-        </span>
-      </div>
-
-      <p className="font-medium text-white text-[15px] mb-1.5">
-        Get your brand cited in sources AI actually reads
-      </p>
-      <p className="text-[13px] mb-4" style={{ color: '#64748B' }}>
-        Structure fixes alone won't get you recommended. AI platforms need to see {brandName} mentioned
-        externally before they'll cite you. Use these to get your first mention today.
-      </p>
-
-      <div className="space-y-3">
-        {/* Tool 1: Reddit post */}
-        <div
-          className="rounded-[6px] p-3"
-          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
-        >
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <div>
-              <p className="text-[13px] font-medium text-white">Post in r/{subreddit}</p>
-              <p className="text-[11px] mt-0.5" style={{ color: '#475569' }}>
-                Perplexity indexes Reddit fast — a single post can appear in AI answers within days
-              </p>
-            </div>
-            <button
-              onClick={() => copyToClipboard(redditPost, 'reddit')}
-              className="flex-shrink-0 text-[11px] px-2.5 py-1 rounded transition-all"
-              style={{
-                background: copied === 'reddit' ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.06)',
-                color: copied === 'reddit' ? '#00D4FF' : '#94a3b8',
-                border: `1px solid ${copied === 'reddit' ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.08)'}`,
-              }}
-            >
-              {copied === 'reddit' ? '✓ Copied' : 'Copy post'}
-            </button>
-          </div>
-          <p className="text-[11px] px-2 py-1.5 rounded font-mono leading-relaxed line-clamp-2" style={{ background: 'rgba(0,0,0,0.3)', color: '#475569' }}>
-            {redditPost.split('\n')[0]}
-          </p>
-        </div>
-
-        {/* Tool 2: Outreach email */}
-        <div
-          className="rounded-[6px] p-3"
-          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
-        >
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <div>
-              <p className="text-[13px] font-medium text-white">Email authors of "best under $X" posts</p>
-              <p className="text-[11px] mt-0.5" style={{ color: '#475569' }}>
-                Find articles ranking for your top query gaps and ask to be included
-              </p>
-            </div>
-            <button
-              onClick={() => copyToClipboard(outreachEmail, 'email')}
-              className="flex-shrink-0 text-[11px] px-2.5 py-1 rounded transition-all"
-              style={{
-                background: copied === 'email' ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.06)',
-                color: copied === 'email' ? '#00D4FF' : '#94a3b8',
-                border: `1px solid ${copied === 'email' ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.08)'}`,
-              }}
-            >
-              {copied === 'email' ? '✓ Copied' : 'Copy email'}
-            </button>
-          </div>
-          <p className="text-[11px] px-2 py-1.5 rounded font-mono leading-relaxed line-clamp-2" style={{ background: 'rgba(0,0,0,0.3)', color: '#475569' }}>
-            Subject: Quick addition for your "{fallbackQuery}" article
-          </p>
-        </div>
-
-        {/* Tool 3: Directory targets */}
-        <div
-          className="flex items-start gap-3 px-3 py-2.5 rounded"
-          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
-        >
-          <span className="text-[12px] font-mono mt-0.5 flex-shrink-0" style={{ color: '#F59E0B' }}>03</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] text-white">Submit to Who What Wear, Refinery29, The Strategist</p>
-            <p className="text-[11px] mt-0.5" style={{ color: '#475569' }}>
-              "Best of" list placements — these are cited directly in AI recommendations
-            </p>
-          </div>
-          <span className="text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5" style={{ background: 'rgba(255,255,255,0.04)', color: '#64748B' }}>
-            1–2 hrs
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function FixesPage() {
   const { data: fixes, isLoading } = useFixes('');
   const { data: queryGaps } = useQueryGaps();
   const { data: scores } = useVisibilityScores(30);
-  const { data: merchant } = useMerchant();
-  const { data: competitors } = useCompetitors();
-  const { data: authorityScore } = useAuthorityScore();
   const rejectFix = useRejectFix();
 
-  const allFixes = (fixes ?? []).filter((f) => f.status !== 'rejected');
+  const allFixes = (fixes ?? []).filter((f) => f.status !== 'rejected' && (f.fix_layer ?? 'content') !== 'authority');
 
-  // Sum citations and total queries across all platforms — use the same denominator
-  // for both "Now" and "After" so the projection is internally consistent.
+  // Sum citations and total queries across all platforms
   const currentCitations = scores?.reduce((s, sc) => s + (sc.queries_hit ?? 0), 0) ?? 0;
   const totalQueriesRun = scores?.reduce((s, sc) => s + (sc.queries_run ?? 0), 0) ?? 0;
 
-  // Top query gaps to attach to content/structure cards
   const topGaps = (queryGaps ?? []).slice(0, 5);
 
-  const hasAuthorityFix = allFixes.some((f) => (f.fix_layer ?? 'content') === 'authority');
   const pendingFixes = allFixes.filter((f) => f.status === 'pending');
   const totalImpact = pendingFixes.reduce((sum, f) => sum + f.est_impact, 0);
   const appliedCount = allFixes.filter((f) => f.status === 'applied' || f.status === 'manual').length;
@@ -439,13 +270,6 @@ export function FixesPage() {
     return null;
   })();
 
-  // Authority card data
-  const brandName = merchant?.brand_name ?? '';
-  const category = merchant?.category ?? '';
-  const topCompetitor = competitors?.[0]?.name ?? '';
-  const topQuery = (queryGaps ?? [])[0]?.query ?? '';
-
-  // Missing query count for header urgency
   const missingQueryCount = (queryGaps ?? []).length;
 
   function handleDismiss(id: string) {
@@ -535,10 +359,8 @@ export function FixesPage() {
           {LAYER_ORDER.map((layer) => {
             const meta = LAYER_META[layer];
             const group = allFixes.filter((f) => (f.fix_layer ?? 'content') === layer);
-            const isAuthorityLayer = layer === 'authority';
 
-            // Skip layers with no fixes unless it's authority (which always shows guidance)
-            if (group.length === 0 && !isAuthorityLayer) return null;
+            if (group.length === 0) return null;
 
             return (
               <div key={layer}>
@@ -551,17 +373,10 @@ export function FixesPage() {
                   <span className="text-[11px]" style={{ color: '#334155' }}>
                     — {meta.sublabel}
                   </span>
-                  <div className="ml-auto flex items-center gap-2">
-                    {isAuthorityLayer && authorityScore !== undefined && (
-                      <span className="text-[10px] font-mono" style={{ color: '#F59E0B' }}>
-                        {authorityScore.grounded_rate}% cited
-                      </span>
-                    )}
-                    {group.length > 0 && (
-                      <span className="text-[10px] font-mono" style={{ color: '#475569' }}>
-                        {group.length} fix{group.length > 1 ? 'es' : ''}
-                      </span>
-                    )}
+                  <div className="ml-auto">
+                    <span className="text-[10px] font-mono" style={{ color: '#475569' }}>
+                      {group.length} fix{group.length > 1 ? 'es' : ''}
+                    </span>
                   </div>
                 </div>
 
@@ -577,16 +392,6 @@ export function FixesPage() {
                       isStartHere={fix.id === startHereId}
                     />
                   ))}
-
-                  {/* Authority guidance card when no authority fixes exist */}
-                  {isAuthorityLayer && !hasAuthorityFix && (
-                    <AuthorityGuidanceCard
-                      brandName={brandName}
-                      category={category}
-                      topCompetitor={topCompetitor}
-                      topQuery={topQuery}
-                    />
-                  )}
                 </div>
               </div>
             );
