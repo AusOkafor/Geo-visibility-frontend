@@ -4,6 +4,52 @@ import { ArrowLeft, Copy, Check } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { useFix, useApproveFix, useRejectFix, useMerchant, useSchemaStatus } from '../../hooks/useApi';
+import type { SchemaValidationResult } from '../../types';
+
+const SCHEMA_CHECKS: { key: keyof SchemaValidationResult; label: string }[] = [
+  { key: 'has_organization', label: 'Organization entity' },
+  { key: 'has_brand',        label: 'Brand entity' },
+  { key: 'has_logo',         label: 'Logo URL' },
+  { key: 'has_same_as',      label: 'sameAs links' },
+  { key: 'has_identifier',   label: 'Domain identifier' },
+  { key: 'has_product',      label: 'Product entity' },
+  { key: 'has_price',        label: 'Price offer' },
+  { key: 'has_availability', label: 'Availability' },
+  { key: 'has_faqpage',      label: 'FAQPage entity' },
+];
+
+function SchemaCompletenessBar({ validation }: { validation: SchemaValidationResult }) {
+  const passed = SCHEMA_CHECKS.filter((c) => validation[c.key] === true).length;
+  const total = SCHEMA_CHECKS.length;
+  const pct = Math.round((passed / total) * 100);
+  const color = pct >= 80 ? '#22c55e' : pct >= 55 ? '#F59E0B' : '#EF4444';
+
+  return (
+    <div className="mb-3 rounded-[6px] p-3" style={{ background: '#0d0d10', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[12px] font-medium" style={{ color: '#94a3b8' }}>Schema signals</span>
+        <span className="text-[12px] font-mono font-semibold" style={{ color }}>
+          {passed}/{total} active
+        </span>
+      </div>
+      <div className="relative mb-2" style={{ height: 6, background: '#1a1a1f', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.4s ease' }} />
+      </div>
+      <div className="grid grid-cols-3 gap-x-4 gap-y-1">
+        {SCHEMA_CHECKS.map(({ key, label }) => (
+          <div key={key} className="flex items-center gap-1">
+            <span style={{ color: validation[key] ? '#22c55e' : '#475569', fontSize: 10 }}>
+              {validation[key] ? '✓' : '○'}
+            </span>
+            <span className="text-[11px]" style={{ color: validation[key] ? '#94a3b8' : '#475569' }}>
+              {label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function FixDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -78,9 +124,9 @@ export function FixDetailPage() {
 
   const data = fix;
 
-  // Schema and listing fixes cannot be auto-applied via API.
+  // Schema, listing, and merchant_center_setup fixes cannot be auto-applied via API.
   // FAQ fixes are auto-applied: backend marks status "applied" and rebuilds the schema.
-  const isManualFix = ['schema', 'listing'].includes(data.fix_type);
+  const isManualFix = ['schema', 'listing', 'merchant_center_setup'].includes(data.fix_type);
 
   const isApplied = data.status === 'applied' || (!isManualFix && approveMutation.isSuccess);
   const isMarkedManual = data.status === 'manual' || (isManualFix && approveMutation.isSuccess);
@@ -127,7 +173,25 @@ export function FixDetailPage() {
       'Use this description as your standard brand bio',
       'Click "Mark as Done" once submitted to at least one directory',
     ],
+    merchant_center_setup: [
+      'Click "Connect Merchant Center" below to open the Shopify App Store',
+      'Install the Google & YouTube app and sign in with your Google account',
+      'Set up a product feed — select All Products for maximum Gemini visibility',
+      'Website verification is automatic with Shopify',
+      'Wait for Google to approve your account (3–5 days), then click "Mark as Done"',
+    ],
   };
+
+  // Extract action URL from generated content for merchant center fix
+  const merchantCenterActionURL: string = (() => {
+    if (data.fix_type !== 'merchant_center_setup') return '';
+    try {
+      const gen = data.generated as Record<string, unknown>;
+      return typeof gen.action_url === 'string' ? gen.action_url : 'https://apps.shopify.com/google';
+    } catch {
+      return 'https://apps.shopify.com/google';
+    }
+  })();
 
   return (
     <div className="pb-20 md:pb-0">
@@ -350,6 +414,9 @@ export function FixDetailPage() {
                       : 'JSON-LD stored — enable app block to go live'}
                   </span>
                 </div>
+                {schemaStatus?.validation && (
+                  <SchemaCompletenessBar validation={schemaStatus.validation} />
+                )}
                 {schemaStatus?.active ? (
                   <p className="text-[12px]" style={{ color: '#64748B' }}>
                     Your JSON-LD is rendering in the page &lt;head&gt;. The next scan will measure the impact on AI citations.
@@ -405,6 +472,9 @@ export function FixDetailPage() {
                           : 'Waiting for app block to be enabled in your theme'}
                       </span>
                     </div>
+                    {schemaStatus?.validation && (
+                      <SchemaCompletenessBar validation={schemaStatus.validation} />
+                    )}
                     {schemaStatus?.active ? (
                       <p className="text-[12px]" style={{ color: '#64748B' }}>
                         Your JSON-LD is live. The next scan will measure the impact on AI citations.
@@ -470,9 +540,80 @@ export function FixDetailPage() {
                 </div>
               </div>
             ) : isManualFix ? (
-              /* Two-path install flow for schema/faq/listing */
+              /* Two-path install flow for schema/faq/listing/merchant_center_setup */
               <>
-                {data.fix_type === 'schema' && !showManualInstall ? (
+                {data.fix_type === 'merchant_center_setup' ? (
+                  /* Merchant Center: direct link to Shopify App Store */
+                  <>
+                    <div
+                      className="rounded-[6px] p-3 mb-3"
+                      style={{ background: 'rgba(0,212,255,0.05)', border: '1px solid rgba(0,212,255,0.15)' }}
+                    >
+                      <p className="text-[12px] font-medium mb-0.5" style={{ color: '#00D4FF' }}>
+                        Setup via Shopify App Store
+                      </p>
+                      <p className="text-[11px]" style={{ color: '#94a3b8' }}>
+                        Install the Google & YouTube app, connect your account, and set up a product feed.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5 mb-3">
+                      {MANUAL_STEPS.merchant_center_setup.map((step, i) => (
+                        <div key={i} className="flex items-start gap-2 text-[12px]">
+                          <span className="font-mono flex-shrink-0 mt-0.5" style={{ color: '#00D4FF' }}>
+                            {i + 1}.
+                          </span>
+                          <span style={{ color: '#94a3b8' }}>{step}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <a
+                      href={merchantCenterActionURL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full font-medium text-[14px] flex items-center justify-center gap-2 transition-all hover:brightness-110 mb-2"
+                      style={{
+                        background: '#00D4FF',
+                        color: '#0A0A0B',
+                        height: 44,
+                        borderRadius: 6,
+                        textDecoration: 'none',
+                        display: 'flex',
+                      }}
+                    >
+                      Connect Merchant Center →
+                    </a>
+
+                    <button
+                      onClick={handleApply}
+                      disabled={isApplying}
+                      className="w-full py-2.5 text-[13px] font-medium transition-all"
+                      style={{
+                        background: 'rgba(0,212,255,0.08)',
+                        color: '#00D4FF',
+                        borderRadius: 6,
+                        border: '1px solid rgba(0,212,255,0.15)',
+                        opacity: isApplying ? 0.7 : 1,
+                      }}
+                    >
+                      {isApplying ? 'Saving...' : 'Mark as Done (Connected)'}
+                    </button>
+
+                    {applyError && (
+                      <p className="text-[12px] text-center" style={{ color: '#EF4444' }}>
+                        {applyError}
+                      </p>
+                    )}
+                    <button
+                      onClick={() => setRejectConfirm(true)}
+                      className="w-full py-2 text-[12px] transition-colors hover:text-white"
+                      style={{ color: '#475569' }}
+                    >
+                      Reject Fix
+                    </button>
+                  </>
+                ) : data.fix_type === 'schema' && !showManualInstall ? (
                   /* Primary path: app block install (lowest friction) */
                   <>
                     <div

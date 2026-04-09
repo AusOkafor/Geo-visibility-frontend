@@ -1,4 +1,4 @@
-import type { Merchant, VisibilityScore, DailyScore, Competitor, Fix, PlatformSource, QueryGap, BrandRecognition, LiveAnswer, AIReadinessScore, NextAction, VisibilityPipeline, QuickWin, ScanProgress, AuthorityScore, AuditProgress, ProductAudit, CollectionAudit, PageAudit } from '../types';
+import type { Merchant, VisibilityScore, DailyScore, Competitor, Fix, PlatformSource, QueryGap, BrandRecognition, LiveAnswer, AIReadinessScore, NextAction, VisibilityPipeline, QuickWin, ScanProgress, AuthorityScore, AuditProgress, ProductAudit, CollectionAudit, PageAudit, SchemaValidationResult, ExternalMention, ExternalMentionStats, MerchantCenterStatus } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://geo-v-backend.onrender.com/api/v1';
 const API_HOST = import.meta.env.VITE_API_HOST ?? 'https://geo-v-backend.onrender.com';
@@ -95,7 +95,7 @@ export const getQuickWins = (): Promise<QuickWin[]> =>
 export const getScanProgress = (): Promise<ScanProgress> =>
   request('/visibility/progress');
 
-export const getSchemaStatus = (): Promise<{ active: boolean; value: string | null }> =>
+export const getSchemaStatus = (): Promise<{ active: boolean; value: string | null; validation?: SchemaValidationResult }> =>
   request('/schema/status');
 
 export const getAuthorityScore = (): Promise<AuthorityScore> =>
@@ -135,3 +135,22 @@ export const getAuditPages = (): Promise<PageAudit[]> =>
 
 export const refreshAudit = (): Promise<{ status: string }> =>
   request('/audit/refresh', { method: 'POST' });
+
+export const getExternalMentions = (limit = 50): Promise<ExternalMention[]> =>
+  request(`/external-mentions?limit=${limit}`);
+
+export const getExternalMentionStats = (): Promise<ExternalMentionStats> =>
+  request('/external-mentions/stats');
+
+export const getMerchantCenterStatus = (): Promise<MerchantCenterStatus> =>
+  request('/merchant-center/status');
+
+export const createExternalMention = (body: {
+  url: string;
+  source_name: string;
+  source_type: string;
+  source_domain?: string;
+  anchor_text?: string;
+  context_snippet?: string;
+}): Promise<ExternalMention> =>
+  request('/external-mentions', { method: 'POST', body: JSON.stringify(body) });

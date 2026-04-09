@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Store, Plus, Trash2, Sparkles } from 'lucide-react';
+import { Store, Plus, Trash2, Sparkles, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { useMerchant, useUpdateMerchant, useSocialLinks, useUpdateSocialLinks, useMerchantFAQs, useUpdateMerchantFAQs, useFAQSuggestions } from '../../hooks/useApi';
+import { useMerchant, useUpdateMerchant, useSocialLinks, useUpdateSocialLinks, useMerchantFAQs, useUpdateMerchantFAQs, useFAQSuggestions, useExternalMentions, useExternalMentionStats, useCreateExternalMention, useMerchantCenterStatus } from '../../hooks/useApi';
 import { deleteAllMerchantData } from '../../lib/api';
 import type { MerchantFAQ } from '../../lib/api';
 
@@ -89,6 +89,304 @@ function Card({ title, children, redBorder = false }: { title: string; children:
       <p className="font-medium text-white text-[15px] mb-4">{title}</p>
       {children}
     </div>
+  );
+}
+
+function MerchantCenterCard() {
+  const { data: status, isLoading } = useMerchantCenterStatus();
+
+  const setupSteps = [
+    { step: 1, label: 'Install the Google & YouTube app', url: 'https://apps.shopify.com/google', time: '2 min' },
+    { step: 2, label: 'Sign in with your Google account', time: '1 min' },
+    { step: 3, label: 'Set up product feed (select All products)', time: '3 min' },
+    { step: 4, label: 'Website verification (automatic with Shopify)', time: 'Automatic' },
+    { step: 5, label: 'Google reviews and approves your account', time: '3–5 days' },
+  ];
+
+  return (
+    <Card title="Google Merchant Center">
+      <p className="text-[13px] mb-4" style={{ color: '#64748B' }}>
+        Gemini (Google's AI) uses Merchant Center to verify your store is a legitimate business. Connected stores are cited more often in Google AI Overviews and shopping recommendations.
+      </p>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 py-2">
+          <span className="inline-block w-3 h-3 rounded-full border-2 border-[#00D4FF] border-t-transparent animate-spin" />
+          <span className="text-[13px]" style={{ color: '#64748B' }}>Checking connection...</span>
+        </div>
+      ) : status?.connected ? (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[18px]">✓</span>
+            <span className="text-[14px] font-medium" style={{ color: '#22c55e' }}>Connected</span>
+          </div>
+          <div
+            className="rounded-[6px] p-3"
+            style={{ background: '#0d0d10', border: '1px solid rgba(34,197,94,0.15)' }}
+          >
+            <div className="flex items-center gap-3">
+              <div>
+                <p className="text-[13px] font-medium" style={{ color: '#e2e8f0' }}>Product feed</p>
+                <p className="text-[12px]" style={{ color: status.product_feed_active ? '#22c55e' : '#F59E0B' }}>
+                  {status.product_feed_active ? 'Active — syncing to Google' : 'Not actively syncing'}
+                </p>
+              </div>
+            </div>
+          </div>
+          <p className="text-[12px] mt-3" style={{ color: '#475569' }}>
+            Gemini can now verify your business and access your product catalog for shopping recommendations.
+          </p>
+        </div>
+      ) : (
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <span
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ background: '#EF4444' }}
+            />
+            <span className="text-[14px] font-medium" style={{ color: '#EF4444' }}>Not connected</span>
+          </div>
+
+          <div className="space-y-2 mb-4">
+            {setupSteps.map(({ step, label, url, time }) => (
+              <div key={step} className="flex items-start gap-3">
+                <span
+                  className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-mono font-semibold mt-0.5"
+                  style={{ background: 'rgba(0,212,255,0.1)', color: '#00D4FF' }}
+                >
+                  {step}
+                </span>
+                <div className="flex-1">
+                  {url ? (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[13px] underline"
+                      style={{ color: '#00D4FF' }}
+                    >
+                      {label}
+                    </a>
+                  ) : (
+                    <span className="text-[13px]" style={{ color: '#94a3b8' }}>{label}</span>
+                  )}
+                </div>
+                <span className="text-[11px] flex-shrink-0" style={{ color: '#475569' }}>{time}</span>
+              </div>
+            ))}
+          </div>
+
+          <a
+            href="https://apps.shopify.com/google"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-[13px] px-4 py-2 rounded font-medium transition-all hover:brightness-110"
+            style={{
+              background: '#00D4FF',
+              color: '#0A0A0B',
+              borderRadius: 6,
+              textDecoration: 'none',
+            }}
+          >
+            Connect Merchant Center →
+          </a>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+const SOURCE_TYPES = [
+  { value: 'editorial',       label: 'Editorial' },
+  { value: 'review_platform', label: 'Review platform' },
+  { value: 'press',           label: 'Press' },
+  { value: 'social',          label: 'Social' },
+  { value: 'influencer',      label: 'Influencer' },
+  { value: 'other',           label: 'Other' },
+] as const;
+
+const SOURCE_TYPE_COLORS: Record<string, string> = {
+  editorial: '#00D4FF',
+  review_platform: '#22c55e',
+  press: '#a78bfa',
+  social: '#f59e0b',
+  influencer: '#ec4899',
+  other: '#64748b',
+};
+
+function ExternalMentionsCard() {
+  const { data: mentions } = useExternalMentions(20);
+  const { data: stats } = useExternalMentionStats();
+  const createMention = useCreateExternalMention();
+
+  const [url, setUrl] = useState('');
+  const [sourceName, setSourceName] = useState('');
+  const [sourceType, setSourceType] = useState('editorial');
+  const [formError, setFormError] = useState('');
+
+  function handleSubmit() {
+    setFormError('');
+    const trimmedUrl = url.trim();
+    const trimmedName = sourceName.trim();
+    if (!trimmedUrl || !trimmedName) {
+      setFormError('URL and source name are required');
+      return;
+    }
+    let domain: string | undefined;
+    try {
+      domain = new URL(trimmedUrl).hostname.replace(/^www\./, '');
+    } catch {
+      setFormError('Enter a valid URL including https://');
+      return;
+    }
+    createMention.mutate(
+      { url: trimmedUrl, source_name: trimmedName, source_type: sourceType, source_domain: domain },
+      {
+        onSuccess: () => {
+          setUrl('');
+          setSourceName('');
+          setSourceType('editorial');
+          toast.success('Mention recorded');
+        },
+        onError: (e: Error) => setFormError(e.message ?? 'Failed to save'),
+      }
+    );
+  }
+
+  const inputStyle = {
+    background: '#0d0d10',
+    border: '1px solid rgba(255,255,255,0.1)',
+    color: '#ffffff',
+  } as const;
+
+  return (
+    <Card title="External mentions">
+      <p className="text-[13px] mb-4" style={{ color: '#64748B' }}>
+        Track press coverage, editorial mentions, and review site listings. These build authority signals that AI models use when deciding who to cite.
+      </p>
+
+      {stats && (
+        <div className="flex gap-4 mb-5 flex-wrap">
+          {[
+            { label: 'Total', value: stats.total },
+            { label: 'Verified', value: stats.verified },
+            { label: 'Avg authority', value: stats.avg_authority_score > 0 ? stats.avg_authority_score.toFixed(2) : '—' },
+          ].map(({ label, value }) => (
+            <div key={label} className="flex flex-col">
+              <span className="text-[11px]" style={{ color: '#475569' }}>{label}</span>
+              <span className="text-[18px] font-mono font-semibold" style={{ color: '#e2e8f0' }}>{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add form */}
+      <div
+        className="rounded-[6px] p-4 mb-4 space-y-3"
+        style={{ background: '#0d0d10', border: '1px solid rgba(255,255,255,0.07)' }}
+      >
+        <p className="text-[12px] font-medium" style={{ color: '#94a3b8' }}>Add a mention</p>
+        <input
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://techcrunch.com/2025/01/your-brand-article"
+          className="w-full text-[13px] px-3 py-2 rounded font-mono"
+          style={inputStyle}
+        />
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={sourceName}
+            onChange={(e) => setSourceName(e.target.value)}
+            placeholder="Source name (e.g. TechCrunch)"
+            className="flex-1 text-[13px] px-3 py-2 rounded"
+            style={inputStyle}
+          />
+          <select
+            value={sourceType}
+            onChange={(e) => setSourceType(e.target.value)}
+            className="text-[13px] px-3 py-2 rounded"
+            style={{ ...inputStyle, color: SOURCE_TYPE_COLORS[sourceType] ?? '#64748b', minWidth: 140 }}
+          >
+            {SOURCE_TYPES.map(({ value, label }) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
+        {formError && (
+          <p className="text-[12px]" style={{ color: '#EF4444' }}>{formError}</p>
+        )}
+        <button
+          onClick={handleSubmit}
+          disabled={createMention.isPending}
+          className="text-[12px] px-3 py-1.5 rounded transition-all"
+          style={{
+            background: createMention.isPending ? 'rgba(0,212,255,0.1)' : '#00D4FF',
+            color: createMention.isPending ? '#00D4FF' : '#0A0A0B',
+            opacity: createMention.isPending ? 0.7 : 1,
+            borderRadius: 6,
+          }}
+        >
+          {createMention.isPending ? 'Saving...' : 'Record Mention'}
+        </button>
+      </div>
+
+      {/* Mentions list */}
+      {mentions && mentions.length > 0 ? (
+        <div className="space-y-2">
+          {mentions.map((m, i) => (
+            <div
+              key={m.id ?? i}
+              className="flex items-start gap-3 rounded-[6px] px-3 py-2.5"
+              style={{ background: '#0d0d10', border: '1px solid rgba(255,255,255,0.05)' }}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                  <span className="text-[12px] font-medium" style={{ color: '#e2e8f0' }}>
+                    {m.source_name}
+                  </span>
+                  <span
+                    className="text-[10px] px-1.5 py-0.5 rounded"
+                    style={{
+                      background: `${SOURCE_TYPE_COLORS[m.source_type] ?? '#64748b'}18`,
+                      color: SOURCE_TYPE_COLORS[m.source_type] ?? '#64748b',
+                      border: `1px solid ${SOURCE_TYPE_COLORS[m.source_type] ?? '#64748b'}30`,
+                    }}
+                  >
+                    {m.source_type.replace('_', ' ')}
+                  </span>
+                  {m.authority_score != null && (
+                    <span className="text-[10px] font-mono" style={{ color: '#64748b' }}>
+                      auth {m.authority_score.toFixed(2)}
+                    </span>
+                  )}
+                  {m.is_verified && (
+                    <CheckCircle2 size={12} style={{ color: '#22c55e', flexShrink: 0 }} />
+                  )}
+                </div>
+                <p className="text-[11px] truncate" style={{ color: '#475569' }}>
+                  {m.url}
+                </p>
+              </div>
+              <a
+                href={m.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-shrink-0 mt-0.5"
+                style={{ color: '#64748b' }}
+              >
+                <ExternalLink size={13} />
+              </a>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[13px]" style={{ color: '#475569' }}>
+          No mentions recorded yet. Add press links, review site listings, or editorial features — each one strengthens your authority score.
+        </p>
+      )}
+    </Card>
   );
 }
 
@@ -392,6 +690,9 @@ export function SettingsPage() {
         </div>
       </Card>
 
+      {/* Google Merchant Center */}
+      <MerchantCenterCard />
+
       {/* Scan settings */}
       <Card title="Scan frequency">
         <p className="text-[13px] mb-4" style={{ color: '#64748B' }}>
@@ -628,6 +929,9 @@ export function SettingsPage() {
           )}
         </div>
       </Card>
+
+      {/* External mentions */}
+      <ExternalMentionsCard />
 
       {/* Danger zone */}
       <Card title="Danger zone" redBorder>

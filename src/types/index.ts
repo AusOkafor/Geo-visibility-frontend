@@ -138,7 +138,7 @@ export interface AuthorityScore {
 
 export interface Fix {
   id: string;
-  fix_type: 'description' | 'faq' | 'schema' | 'listing' | 'collection_description' | 'about_page' | 'size_guide';
+  fix_type: 'description' | 'faq' | 'schema' | 'listing' | 'collection_description' | 'about_page' | 'size_guide' | 'merchant_center_setup';
   fix_layer: 'structure' | 'content' | 'authority';
   priority: 'high' | 'medium' | 'low';
   title: string;
@@ -209,4 +209,45 @@ export interface PageAudit {
   is_placeholder: boolean;
   fix_applied: boolean;
   updated_at: string;
+}
+
+export interface SchemaValidationResult {
+  has_organization: boolean;
+  has_brand: boolean;
+  has_logo: boolean;
+  has_same_as: boolean;
+  has_identifier: boolean;
+  has_product: boolean;
+  has_price: boolean;
+  has_availability: boolean;
+  has_faqpage: boolean;
+  completeness_score: number; // 0.0–1.0
+}
+
+export interface ExternalMention {
+  id?: number;
+  merchant_id?: number;
+  url: string;
+  source_name: string;
+  source_type: 'editorial' | 'review_platform' | 'press' | 'social' | 'influencer' | 'other';
+  source_domain?: string | null;
+  authority_score?: number | null;
+  sentiment?: string | null;
+  anchor_text?: string | null;
+  context_snippet?: string | null;
+  is_verified?: boolean;
+  created_at?: string;
+}
+
+export interface ExternalMentionStats {
+  total: number;
+  verified: number;
+  avg_authority_score: number;
+  by_source_type: Record<string, number>;
+}
+
+export interface MerchantCenterStatus {
+  connected: boolean;
+  product_feed_active: boolean;
+  recommendation_url?: string;
 }

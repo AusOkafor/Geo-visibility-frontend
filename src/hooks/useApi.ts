@@ -161,3 +161,23 @@ export const useRefreshAudit = () => {
     },
   });
 };
+
+export const useMerchantCenterStatus = () =>
+  useQuery({ queryKey: ['merchant-center-status'], queryFn: api.getMerchantCenterStatus });
+
+export const useExternalMentions = (limit = 50) =>
+  useQuery({ queryKey: ['external-mentions', limit], queryFn: () => api.getExternalMentions(limit) });
+
+export const useExternalMentionStats = () =>
+  useQuery({ queryKey: ['external-mention-stats'], queryFn: api.getExternalMentionStats });
+
+export const useCreateExternalMention = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.createExternalMention,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['external-mentions'] });
+      qc.invalidateQueries({ queryKey: ['external-mention-stats'] });
+    },
+  });
+};
