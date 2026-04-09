@@ -363,13 +363,13 @@ export function AuditPage() {
   const { data: progress, isLoading: loadingProgress } = useAuditProgress({
     refetchInterval: polling ? POLL_MS : false,
   });
-  const { data: products = [], isLoading: loadingProducts } = useAuditProducts({
+  const { data: products, isLoading: loadingProducts } = useAuditProducts({
     refetchInterval: polling ? POLL_MS : false,
   });
-  const { data: collections = [], isLoading: loadingCollections } = useAuditCollections({
+  const { data: collections, isLoading: loadingCollections } = useAuditCollections({
     refetchInterval: polling ? POLL_MS : false,
   });
-  const { data: pages = [], isLoading: loadingPages } = useAuditPages({
+  const { data: pages, isLoading: loadingPages } = useAuditPages({
     refetchInterval: polling ? POLL_MS : false,
   });
   const refresh = useRefreshAudit();
@@ -396,9 +396,16 @@ export function AuditPage() {
   }
 
   const score = progress?.overall_completeness_score ?? 0;
-  const productsNeedingAttention = products.filter((p) => p.needs_attention && !p.fix_applied);
-  const collectionsNeedingAttention = collections.filter((c) => c.needs_attention && !c.fix_applied);
-  const pagesNeedingAttention = pages.filter((p) => p.needs_attention && !p.fix_applied);
+
+  // Use detail rows when available, fall back to progress snapshot counts for badges
+  const productsNeedingAttention = products?.filter((p) => p.needs_attention && !p.fix_applied) ?? [];
+  const collectionsNeedingAttention = collections?.filter((c) => c.needs_attention && !c.fix_applied) ?? [];
+  const pagesNeedingAttention = pages?.filter((p) => p.needs_attention && !p.fix_applied) ?? [];
+
+  // Badge counts: prefer real detail rows; fall back to snapshot when detail query hasn't loaded yet
+  const productBadgeCount = products != null ? productsNeedingAttention.length : (progress?.products_needing_attention ?? 0);
+  const collectionBadgeCount = collections != null ? collectionsNeedingAttention.length : (progress?.collections_needing_attention ?? 0);
+  const pageBadgeCount = pages != null ? pagesNeedingAttention.length : (progress?.pages_needing_attention ?? 0);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -492,18 +499,36 @@ export function AuditPage() {
           </div>
 
           {/* Products */}
-          <SectionCard icon={Package} title="Products" count={productsNeedingAttention.length}>
-            <ProductsTable items={productsNeedingAttention} />
+          <SectionCard icon={Package} title="Products" count={productBadgeCount}>
+            {products == null && (progress?.products_needing_attention ?? 0) > 0 ? (
+              <p className="text-center py-8" style={{ color: '#64748B', fontSize: 13 }}>
+                {progress!.products_needing_attention} products need attention — re-run audit to load details.
+              </p>
+            ) : (
+              <ProductsTable items={productsNeedingAttention} />
+            )}
           </SectionCard>
 
           {/* Collections */}
-          <SectionCard icon={Layers} title="Collections" count={collectionsNeedingAttention.length}>
-            <CollectionsTable items={collectionsNeedingAttention} />
+          <SectionCard icon={Layers} title="Collections" count={collectionBadgeCount}>
+            {collections == null && (progress?.collections_needing_attention ?? 0) > 0 ? (
+              <p className="text-center py-8" style={{ color: '#64748B', fontSize: 13 }}>
+                {progress!.collections_needing_attention} collections need attention — re-run audit to load details.
+              </p>
+            ) : (
+              <CollectionsTable items={collectionsNeedingAttention} />
+            )}
           </SectionCard>
 
           {/* Pages */}
-          <SectionCard icon={FileText} title="Pages" count={pagesNeedingAttention.length}>
-            <PagesTable items={pagesNeedingAttention} />
+          <SectionCard icon={FileText} title="Pages" count={pageBadgeCount}>
+            {pages == null && (progress?.pages_needing_attention ?? 0) > 0 ? (
+              <p className="text-center py-8" style={{ color: '#64748B', fontSize: 13 }}>
+                {progress!.pages_needing_attention} pages need attention — re-run audit to load details.
+              </p>
+            ) : (
+              <PagesTable items={pagesNeedingAttention} />
+            )}
           </SectionCard>
         </>
       )}
