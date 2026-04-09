@@ -71,6 +71,9 @@ export const updateMerchant = (data: { brand_name: string; category: string }): 
 export const triggerScan = (): Promise<{ status: string }> =>
   request('/scans', { method: 'POST' });
 
+export const cancelScan = (): Promise<{ status: string }> =>
+  request('/scans', { method: 'DELETE' });
+
 export const getScanStatus = (): Promise<{ state: string; attempted_at?: string }> =>
   request('/scans/status');
 

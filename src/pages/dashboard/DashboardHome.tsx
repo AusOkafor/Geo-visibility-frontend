@@ -24,6 +24,7 @@ import {
   useFixes,
   useCompetitors,
   useTriggerScan,
+  useCancelScan,
   usePlatformSources,
   useQueryGaps,
   useBrandRecognition,
@@ -132,6 +133,7 @@ export function DashboardHome() {
   const { data: scanProgressData } = useScanProgressQuery();
   const { data: authorityScore } = useAuthorityScore();
   const triggerScan = useTriggerScan();
+  const cancelScan = useCancelScan();
 
   const chatgpt = scores?.find((s) => s.platform === 'chatgpt');
   const perplexity = scores?.find((s) => s.platform === 'perplexity');
@@ -253,6 +255,15 @@ export function DashboardHome() {
     });
   }
 
+  function handleCancelScan() {
+    cancelScan.mutate(undefined, {
+      onSuccess: () => {
+        stopPolling();
+        setScanActive(false);
+      },
+    });
+  }
+
   function dismissWelcome() {
     localStorage.setItem('welcome_dismissed', 'true');
     setWelcomeDismissed(true);
@@ -291,22 +302,39 @@ export function DashboardHome() {
         title="Dashboard"
         subtitle="AI visibility overview — last 30 days"
         action={
-          <button
-            onClick={handleRunScan}
-            disabled={triggerScan.isPending || scanActive || profileIncomplete}
-            title={profileIncomplete ? 'Complete your store profile in Settings before scanning' : undefined}
-            className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium transition-all"
-            style={{
-              background: profileIncomplete ? 'rgba(100,116,139,0.08)' : scanActive ? 'rgba(0,212,255,0.08)' : 'rgba(0,212,255,0.12)',
-              border: profileIncomplete ? '1px solid rgba(100,116,139,0.25)' : '1px solid rgba(0,212,255,0.25)',
-              color: profileIncomplete ? '#475569' : scanActive ? '#64748B' : '#00D4FF',
-              cursor: triggerScan.isPending || scanActive || profileIncomplete ? 'not-allowed' : 'pointer',
-              opacity: triggerScan.isPending || scanActive ? 0.7 : 1,
-            }}
-          >
-            <RefreshCw size={13} className={scanActive ? 'animate-spin' : ''} />
-            {triggerScan.isPending ? 'Queuing…' : scanActive ? 'Scanning…' : 'Run Scan'}
-          </button>
+          scanActive ? (
+            <button
+              onClick={handleCancelScan}
+              disabled={cancelScan.isPending}
+              className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium transition-all"
+              style={{
+                background: 'rgba(239,68,68,0.08)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                color: cancelScan.isPending ? '#64748B' : '#EF4444',
+                cursor: cancelScan.isPending ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <RefreshCw size={13} className="animate-spin" style={{ color: '#64748B' }} />
+              {cancelScan.isPending ? 'Cancelling…' : 'Cancel Scan'}
+            </button>
+          ) : (
+            <button
+              onClick={handleRunScan}
+              disabled={triggerScan.isPending || profileIncomplete}
+              title={profileIncomplete ? 'Complete your store profile in Settings before scanning' : undefined}
+              className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium transition-all"
+              style={{
+                background: profileIncomplete ? 'rgba(100,116,139,0.08)' : 'rgba(0,212,255,0.12)',
+                border: profileIncomplete ? '1px solid rgba(100,116,139,0.25)' : '1px solid rgba(0,212,255,0.25)',
+                color: profileIncomplete ? '#475569' : '#00D4FF',
+                cursor: triggerScan.isPending || profileIncomplete ? 'not-allowed' : 'pointer',
+                opacity: triggerScan.isPending ? 0.7 : 1,
+              }}
+            >
+              <RefreshCw size={13} />
+              {triggerScan.isPending ? 'Queuing…' : 'Run Scan'}
+            </button>
+          )
         }
       />
 

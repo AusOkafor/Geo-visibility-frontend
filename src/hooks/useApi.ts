@@ -70,6 +70,10 @@ export const useTriggerScan = () => {
   });
 };
 
+export const useCancelScan = () => {
+  return useMutation({ mutationFn: api.cancelScan });
+};
+
 export const useUpdateMerchant = () => {
   const qc = useQueryClient();
   return useMutation({
