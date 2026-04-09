@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ClipboardCheck, RefreshCw, AlertTriangle, CheckCircle2, Package, Layers, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -354,17 +354,43 @@ function SectionCard({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function AuditPage() {
-  const { data: progress, isLoading: loadingProgress } = useAuditProgress();
-  const { data: products = [], isLoading: loadingProducts } = useAuditProducts();
-  const { data: collections = [], isLoading: loadingCollections } = useAuditCollections();
-  const { data: pages = [], isLoading: loadingPages } = useAuditPages();
+  const [polling, setPolling] = useState(false);
+  const pollStop = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const POLL_MS = 5_000;
+  const POLL_TIMEOUT_MS = 90_000;
+
+  const { data: progress, isLoading: loadingProgress } = useAuditProgress({
+    refetchInterval: polling ? POLL_MS : false,
+  });
+  const { data: products = [], isLoading: loadingProducts } = useAuditProducts({
+    refetchInterval: polling ? POLL_MS : false,
+  });
+  const { data: collections = [], isLoading: loadingCollections } = useAuditCollections({
+    refetchInterval: polling ? POLL_MS : false,
+  });
+  const { data: pages = [], isLoading: loadingPages } = useAuditPages({
+    refetchInterval: polling ? POLL_MS : false,
+  });
   const refresh = useRefreshAudit();
+
+  // Stop polling once we hit the timeout ceiling
+  useEffect(() => {
+    if (!polling) return;
+    pollStop.current = setTimeout(() => setPolling(false), POLL_TIMEOUT_MS);
+    return () => {
+      if (pollStop.current) clearTimeout(pollStop.current);
+    };
+  }, [polling]);
 
   const isLoading = loadingProgress || loadingProducts || loadingCollections || loadingPages;
 
   function handleRefresh() {
     refresh.mutate(undefined, {
-      onSuccess: () => toast.success('Audit queued — results will update in ~30s'),
+      onSuccess: () => {
+        toast.success('Audit queued — refreshing results every 5s');
+        setPolling(true);
+      },
       onError: () => toast.error('Failed to queue audit'),
     });
   }

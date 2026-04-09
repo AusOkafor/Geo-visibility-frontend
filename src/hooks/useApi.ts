@@ -137,29 +137,20 @@ export const useUpdateMerchantFAQs = () => {
 export const useFAQSuggestions = () =>
   useMutation({ mutationFn: api.getFAQSuggestions });
 
-export const useAuditProgress = () =>
-  useQuery({ queryKey: ['audit-progress'], queryFn: api.getAuditProgress });
+export const useAuditProgress = (opts?: { refetchInterval?: number | false }) =>
+  useQuery({ queryKey: ['audit-progress'], queryFn: api.getAuditProgress, ...opts });
 
-export const useAuditProducts = () =>
-  useQuery({ queryKey: ['audit-products'], queryFn: api.getAuditProducts });
+export const useAuditProducts = (opts?: { refetchInterval?: number | false }) =>
+  useQuery({ queryKey: ['audit-products'], queryFn: api.getAuditProducts, ...opts });
 
-export const useAuditCollections = () =>
-  useQuery({ queryKey: ['audit-collections'], queryFn: api.getAuditCollections });
+export const useAuditCollections = (opts?: { refetchInterval?: number | false }) =>
+  useQuery({ queryKey: ['audit-collections'], queryFn: api.getAuditCollections, ...opts });
 
-export const useAuditPages = () =>
-  useQuery({ queryKey: ['audit-pages'], queryFn: api.getAuditPages });
+export const useAuditPages = (opts?: { refetchInterval?: number | false }) =>
+  useQuery({ queryKey: ['audit-pages'], queryFn: api.getAuditPages, ...opts });
 
 export const useRefreshAudit = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: api.refreshAudit,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['audit-progress'] });
-      qc.invalidateQueries({ queryKey: ['audit-products'] });
-      qc.invalidateQueries({ queryKey: ['audit-collections'] });
-      qc.invalidateQueries({ queryKey: ['audit-pages'] });
-    },
-  });
+  return useMutation({ mutationFn: api.refreshAudit });
 };
 
 export const useMerchantCenterStatus = () =>
