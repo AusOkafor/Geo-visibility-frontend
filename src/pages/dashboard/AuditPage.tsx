@@ -492,7 +492,7 @@ export function AuditPage() {
               <StatPill
                 label="Pages"
                 value={progress.pages_needing_attention}
-                total={progress.total_pages_audited + progress.pages_needing_attention}
+                total={progress.total_pages_audited}
                 color="#F59E0B"
               />
             </div>
