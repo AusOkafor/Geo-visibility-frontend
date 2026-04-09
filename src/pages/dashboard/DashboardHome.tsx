@@ -157,8 +157,13 @@ export function DashboardHome() {
     platformName: string,
     queriesHit?: number,
     queriesRun?: number,
+    negativeMentions?: number,
   ): string | undefined => {
     if (score === undefined) return undefined;
+    // Negative mentions take priority — merchant needs to know immediately
+    if (negativeMentions && negativeMentions > 0) {
+      return `${negativeMentions} negative mention${negativeMentions > 1 ? 's' : ''} excluded from score`;
+    }
     if (score === 0) return `Not being recommended on ${platformName}`;
     // Raw count — most useful context when data exists
     if (queriesHit !== undefined && queriesRun) {
@@ -459,9 +464,9 @@ export function DashboardHome() {
           ))
         ) : (
           <>
-            <MetricCard label="ChatGPT Visibility" value={chatgpt?.score ?? 0} suffix="%" trend={cgDelta} status={chatgpt ? scoreStatus(chatgpt.score) : undefined} subLabel={platformSubLabel(chatgpt?.score, 'ChatGPT', chatgpt?.queries_hit, chatgpt?.queries_run)} sourceTag={sourceTag('chatgpt')} />
-            <MetricCard label="Perplexity Visibility" value={perplexity?.score ?? 0} suffix="%" trend={pxDelta} status={perplexity ? scoreStatus(perplexity.score) : undefined} subLabel={platformSubLabel(perplexity?.score, 'Perplexity', perplexity?.queries_hit, perplexity?.queries_run)} sourceTag={sourceTag('perplexity')} />
-            <MetricCard label="Gemini Visibility" value={gemini?.score ?? 0} suffix="%" trend={gmDelta} status={gemini ? scoreStatus(gemini.score) : undefined} subLabel={platformSubLabel(gemini?.score, 'Gemini', gemini?.queries_hit, gemini?.queries_run)} sourceTag={sourceTag('gemini')} />
+            <MetricCard label="ChatGPT Visibility" value={chatgpt?.score ?? 0} suffix="%" trend={cgDelta} status={chatgpt ? scoreStatus(chatgpt.score) : undefined} subLabel={platformSubLabel(chatgpt?.score, 'ChatGPT', chatgpt?.queries_hit, chatgpt?.queries_run, chatgpt?.negative_mentions)} sourceTag={sourceTag('chatgpt')} />
+            <MetricCard label="Perplexity Visibility" value={perplexity?.score ?? 0} suffix="%" trend={pxDelta} status={perplexity ? scoreStatus(perplexity.score) : undefined} subLabel={platformSubLabel(perplexity?.score, 'Perplexity', perplexity?.queries_hit, perplexity?.queries_run, perplexity?.negative_mentions)} sourceTag={sourceTag('perplexity')} />
+            <MetricCard label="Gemini Visibility" value={gemini?.score ?? 0} suffix="%" trend={gmDelta} status={gemini ? scoreStatus(gemini.score) : undefined} subLabel={platformSubLabel(gemini?.score, 'Gemini', gemini?.queries_hit, gemini?.queries_run, gemini?.negative_mentions)} sourceTag={sourceTag('gemini')} />
             <MetricCard
               label="Pending Fixes"
               value={pendingFixes.length}

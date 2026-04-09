@@ -14,6 +14,7 @@ export interface VisibilityScore {
   score_date: string;
   queries_run: number;
   queries_hit: number;
+  negative_mentions: number;
 }
 
 export interface DailyScore {
