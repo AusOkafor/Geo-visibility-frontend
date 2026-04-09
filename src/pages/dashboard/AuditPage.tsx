@@ -13,8 +13,9 @@ import {
   useAuditPages,
   useRefreshAudit,
   useMerchant,
+  useSchemaStatus,
 } from '../../hooks/useApi';
-import type { ProductAudit, CollectionAudit, PageAudit } from '../../types';
+import type { ProductAudit, CollectionAudit, PageAudit, SchemaValidationResult } from '../../types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -383,6 +384,111 @@ function PagesTable({ items, shopDomain }: { items: PageAudit[]; shopDomain?: st
   );
 }
 
+// ── Schema card ───────────────────────────────────────────────────────────────
+
+const SCHEMA_CHECKS: { key: keyof SchemaValidationResult; label: string }[] = [
+  { key: 'has_organization', label: 'Organization' },
+  { key: 'has_brand',        label: 'Brand' },
+  { key: 'has_logo',         label: 'Logo' },
+  { key: 'has_same_as',      label: 'Same As' },
+  { key: 'has_identifier',   label: 'Identifier' },
+  { key: 'has_product',      label: 'Product' },
+  { key: 'has_price',        label: 'Price' },
+  { key: 'has_availability', label: 'Availability' },
+  { key: 'has_faqpage',      label: 'FAQ Page' },
+];
+
+function SchemaCard() {
+  const { data: schema } = useSchemaStatus();
+  const v = schema?.validation;
+  const pct = v ? Math.round(v.completeness_score * 100) : 0;
+  const barColor = pct >= 70 ? '#10B981' : pct >= 40 ? '#F59E0B' : '#EF4444';
+
+  const badgeStyle = !schema?.active
+    ? { background: '#EF444422', color: '#EF4444', border: '1px solid #EF444444' }
+    : pct < 70
+    ? { background: '#F59E0B22', color: '#F59E0B', border: '1px solid #F59E0B44' }
+    : { background: '#10B98122', color: '#10B981', border: '1px solid #10B98144' };
+
+  const badgeLabel = !schema?.active ? 'Not set up' : `${pct}% complete`;
+
+  return (
+    <div className="rounded-xl p-5" style={{ background: '#0D0D0F', border: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          {/* Code brackets icon inline */}
+          <svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+            <path d="M5 4L1 8l4 4M11 4l4 4-4 4" stroke="#00D4FF" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="text-[14px] font-semibold text-white" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+            Schema
+          </span>
+        </div>
+        <span className="text-[11px] px-2 py-0.5 rounded-full" style={badgeStyle}>
+          {badgeLabel}
+        </span>
+      </div>
+
+      {!schema?.active ? (
+        <div className="flex items-center justify-between">
+          <p className="text-[13px]" style={{ color: '#64748B' }}>
+            No schema detected — AI platforms can't read your prices, availability, or brand identity.
+          </p>
+          <Link
+            to="/dashboard/fixes"
+            className="ml-4 flex-shrink-0 inline-flex items-center gap-1 text-[12px] font-medium"
+            style={{ color: '#A78BFA' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#C4B5FD')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '#A78BFA')}
+          >
+            <Zap size={11} /> View Fix
+          </Link>
+        </div>
+      ) : (
+        <>
+          {/* Completeness bar */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 rounded-full overflow-hidden" style={{ height: 4, background: 'rgba(255,255,255,0.06)' }}>
+              <div style={{ width: `${pct}%`, height: '100%', background: barColor, transition: 'width 0.4s ease' }} />
+            </div>
+            <span style={{ color: '#64748B', fontSize: 11, fontVariantNumeric: 'tabular-nums', minWidth: 32 }}>{pct}%</span>
+          </div>
+
+          {/* Check grid */}
+          {v && (
+            <div className="grid grid-cols-3 gap-x-4 gap-y-1.5">
+              {SCHEMA_CHECKS.map(({ key, label }) => {
+                const pass = v[key] as boolean;
+                return (
+                  <div key={key} className="flex items-center gap-1.5">
+                    <span style={{ color: pass ? '#10B981' : '#EF4444', fontSize: 11 }}>{pass ? '✓' : '✗'}</span>
+                    <span style={{ color: pass ? '#94A3B8' : '#64748B', fontSize: 11 }}>{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Link to fix if incomplete */}
+          {pct < 100 && (
+            <div className="mt-4 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <Link
+                to="/dashboard/fixes"
+                className="inline-flex items-center gap-1 text-[12px]"
+                style={{ color: '#A78BFA' }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#C4B5FD')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = '#A78BFA')}
+              >
+                <Zap size={11} /> View schema fix
+              </Link>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Section card ──────────────────────────────────────────────────────────────
 
 function SectionCard({
@@ -578,6 +684,9 @@ export function AuditPage() {
               <PagesTable items={pagesNeedingAttention} shopDomain={shopDomain} />
             )}
           </SectionCard>
+
+          {/* Schema */}
+          <SchemaCard />
         </>
       )}
     </div>
