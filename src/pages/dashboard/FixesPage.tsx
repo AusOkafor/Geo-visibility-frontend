@@ -1,79 +1,67 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronUp, Layers } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useFixes, useRejectFix, useQueryGaps, useVisibilityScores } from '../../hooks/useApi';
 import type { Fix, QueryGap } from '../../types';
 
-// Maps fix_layer → the 2-bucket problem frame shown on Visibility page
-const LAYER_META: Record<string, { label: string; sublabel: string; color: string }> = {
-  content: {
-    label: 'Layer 1 — Get Found',
-    sublabel: 'AI can\'t find answers for buyer queries on your site yet',
-    color: '#00D4FF',
-  },
-  structure: {
-    label: 'Layer 2 — Get Understood',
-    sublabel: 'AI can\'t properly parse your brand and catalog',
-    color: '#A78BFA',
-  },
-};
-const LAYER_ORDER = ['content', 'structure'] as const;
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-// Post-apply message per layer — shows what to do next
-const NEXT_STEP: Record<string, string> = {
-  content: 'Content live — apply the schema fix next so AI can parse your brand correctly',
-  structure: 'Schema applied — run a new scan to measure your citation improvement',
+/** Human-readable label for each fix type */
+const FIX_TYPE_LABEL: Record<string, string> = {
+  collection_description: 'Collection Description',
+  description:            'Product Description',
+  faq:                    'FAQ Page',
+  schema:                 'Schema',
+  about_page:             'About Page',
+  size_guide:             'Size Guide',
+  listing:                'Directory Listing',
+  merchant_center_setup:  'Google Merchant Center',
 };
+
+function fixLabel(type: string) {
+  return FIX_TYPE_LABEL[type] ?? type.replace(/_/g, ' ');
+}
+
+// ── Individual fix card ───────────────────────────────────────────────────────
 
 function FixCard({
   fix,
-  onDismiss,
   topGaps,
-  currentCitations,
-  totalQueriesRun,
+  onDismiss,
   isStartHere,
+  compact = false,
 }: {
   fix: Fix;
-  onDismiss: (id: string) => void;
   topGaps: QueryGap[];
-  currentCitations: number;
-  totalQueriesRun: number;
+  onDismiss: (id: string) => void;
   isStartHere?: boolean;
+  compact?: boolean;
 }) {
   const navigate = useNavigate();
-  const layer = fix.fix_layer ?? 'content';
-  const layerColor = LAYER_META[layer]?.color ?? '#64748B';
-  const typeLabel =
-    fix.fix_type === 'faq' ? 'FAQ Page' : fix.fix_type.charAt(0).toUpperCase() + fix.fix_type.slice(1);
 
-  // Project gain using the same total-queries denominator as currentCitations.
-  // Cap at totalQueriesRun — you can't be cited more times than queries were run.
-  const projectedGain =
-    totalQueriesRun > 0 ? Math.round(totalQueriesRun * fix.est_impact / 100) : null;
-  const projectedTotal =
-    projectedGain !== null ? Math.min(currentCitations + projectedGain, totalQueriesRun) : null;
-
-  const showGaps = topGaps.length > 0 && fix.status === 'pending';
-  const gapsCovered = topGaps.filter(g => g.impact === 'high' || g.impact === 'medium').length;
+  const isPending = fix.status === 'pending';
+  const isApplied = fix.status === 'applied' || fix.status === 'manual';
+  const isApplying = fix.status === 'applying' || fix.status === 'approved';
 
   return (
     <div
-      className="rounded-[6px] p-5 transition-all duration-200 hover:border-white/10"
-      style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
+      className="rounded-[6px] p-4 transition-all"
+      style={{ background: compact ? '#0D0D0F' : '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
     >
-      <div className="flex gap-5">
+      <div className="flex gap-4">
         {/* Left: content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-1.5">
             <span
               className="text-[11px] px-2 py-0.5 rounded capitalize"
-              style={{ border: `1px solid ${layerColor}44`, color: layerColor }}
+              style={{ border: '1px solid rgba(255,255,255,0.1)', color: '#94A3B8' }}
             >
-              {typeLabel}
+              {fixLabel(fix.fix_type)}
             </span>
-            {isStartHere && fix.status === 'pending' && (
+            {isStartHere && isPending && (
               <span
                 className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
                 style={{ background: 'rgba(0,212,255,0.12)', color: '#00D4FF', border: '1px solid rgba(0,212,255,0.25)' }}
@@ -81,24 +69,19 @@ function FixCard({
                 ⚡ Start here
               </span>
             )}
-            {fix.priority === 'high' && fix.status === 'pending' && !isStartHere && (
-              <span
-                className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }}
-              >
-                Competitors cited here
-              </span>
-            )}
           </div>
 
-          <p className="font-medium text-white text-[15px] mb-1.5">{fix.title}</p>
-          <p className="text-[13px] leading-relaxed line-clamp-2" style={{ color: '#64748B' }}>
-            {fix.explanation}
-          </p>
+          <p className="font-medium text-white text-[14px] mb-1">{fix.title}</p>
 
-          {/* Query gaps this fix directly targets */}
-          {showGaps && (
-            <div className="mt-3">
+          {!compact && (
+            <p className="text-[12px] leading-relaxed line-clamp-2" style={{ color: '#64748B' }}>
+              {fix.explanation}
+            </p>
+          )}
+
+          {/* Top query gaps — only show on pending, non-compact */}
+          {!compact && isPending && topGaps.length > 0 && (
+            <div className="mt-2.5">
               <p className="text-[11px] mb-1.5" style={{ color: '#475569' }}>
                 Targets queries you're missing:
               </p>
@@ -107,11 +90,7 @@ function FixCard({
                   <span
                     key={i}
                     className="text-[11px] px-2 py-0.5 rounded"
-                    style={{
-                      background: 'rgba(239,68,68,0.07)',
-                      color: '#fca5a5',
-                      border: '1px solid rgba(239,68,68,0.15)',
-                    }}
+                    style={{ background: 'rgba(239,68,68,0.07)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.15)' }}
                   >
                     "{gap.query}"
                   </span>
@@ -120,121 +99,55 @@ function FixCard({
             </div>
           )}
 
-          {/* Post-apply journey message */}
-          {(fix.status === 'applied' || fix.status === 'manual') && (
-            <div
-              className="mt-3 px-3 py-2 rounded text-[12px]"
-              style={{
-                background: fix.status === 'applied'
-                  ? 'rgba(0,212,255,0.06)'
-                  : 'rgba(245,158,11,0.06)',
-                border: fix.status === 'applied'
-                  ? '1px solid rgba(0,212,255,0.12)'
-                  : '1px solid rgba(245,158,11,0.12)',
-                color: fix.status === 'applied' ? '#67e8f9' : '#fcd34d',
-              }}
-            >
-              {fix.status === 'applied'
-                ? `✓ ${NEXT_STEP[layer]}`
-                : 'Apply the generated content to your store — copy from the review screen above'}
-              {fix.status === 'applied' && (
-                <p className="mt-1 text-[10px]" style={{ color: '#475569' }}>
-                  Day 0–7: indexing · Day 7–21: AI surfaces content · Next scan: check for citation changes
-                </p>
-              )}
-            </div>
+          {/* Applied notice */}
+          {isApplied && !compact && (
+            <p className="mt-2 text-[12px]" style={{ color: '#10B981' }}>
+              ✓ Applied — run a new scan to measure citation changes
+            </p>
           )}
         </div>
 
         {/* Right: impact + actions */}
-        <div className="flex flex-col items-end justify-start gap-2 flex-shrink-0 min-w-[130px]">
-          {fix.status === 'pending' ? (
+        <div className="flex flex-col items-end justify-start gap-2 flex-shrink-0">
+          {isPending && (
             <>
               <div className="text-right">
-                <p className="font-mono font-bold text-[20px]" style={{ color: '#00D4FF' }}>
+                <p className="font-mono font-bold text-[18px]" style={{ color: '#00D4FF' }}>
                   +{fix.est_impact}%
                 </p>
-                <p className="text-[10px]" style={{ color: '#64748B' }}>
-                  estimated visibility gain
-                </p>
-                {gapsCovered > 0 && (
-                  <p className="text-[10px] mt-0.5" style={{ color: '#475569' }}>
-                    targets {gapsCovered} missing quer{gapsCovered === 1 ? 'y' : 'ies'}
-                  </p>
-                )}
+                <p className="text-[10px]" style={{ color: '#64748B' }}>est. visibility</p>
               </div>
-
-              {/* Before → After in concrete citation counts */}
-              {projectedTotal !== null && totalQueriesRun > 0 && (
-                <div
-                  className="text-[11px] px-2.5 py-1.5 rounded w-full"
-                  style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                  }}
-                >
-                  <p className="mb-0.5" style={{ color: '#64748B' }}>
-                    Now:{' '}
-                    <span className="font-mono text-white">
-                      {currentCitations} citations
-                    </span>
-                  </p>
-                  <p style={{ color: '#00D4FF' }}>
-                    After:{' '}
-                    <span className="font-mono">
-                      {projectedTotal} citations
-                    </span>
-                  </p>
-                </div>
-              )}
-
               <button
                 onClick={() => navigate(`/dashboard/fixes/${fix.id}`)}
-                className="text-[13px] font-medium px-3 py-1.5 rounded w-full text-center transition-all hover:brightness-110"
-                style={{ background: '#00D4FF', color: '#0A0A0B', borderRadius: 6 }}
+                className="text-[12px] font-medium px-3 py-1.5 rounded text-center transition-all hover:brightness-110 whitespace-nowrap"
+                style={{ background: '#00D4FF', color: '#0A0A0B', minWidth: 90 }}
               >
                 Apply Fix
               </button>
               <button
-                onClick={() => navigate(`/dashboard/fixes/${fix.id}`)}
-                className="text-[11px] transition-colors w-full text-center"
-                style={{ color: '#475569' }}
-              >
-                Preview
-              </button>
-              <button
                 onClick={() => onDismiss(fix.id)}
-                className="text-[11px] transition-colors"
+                className="text-[11px]"
                 style={{ color: '#334155' }}
               >
                 Dismiss
               </button>
             </>
-          ) : fix.status === 'applied' ? (
+          )}
+          {isApplied && (
             <span
               className="text-[12px] flex items-center gap-1.5 px-2 py-1 rounded"
-              style={{ color: '#00D4FF', background: 'rgba(0,212,255,0.08)' }}
+              style={{ color: '#10B981', background: 'rgba(16,185,129,0.08)' }}
             >
-              ✓ Applied
+              <CheckCircle2 size={12} /> Applied
             </span>
-          ) : fix.status === 'manual' ? (
-            <span
-              className="text-[12px] px-2 py-1 rounded text-center"
-              style={{ color: '#F59E0B', background: 'rgba(245,158,11,0.08)' }}
-            >
-              Manual action needed
+          )}
+          {isApplying && (
+            <span className="text-[12px] px-2 py-1 rounded" style={{ color: '#F59E0B', background: 'rgba(245,158,11,0.08)' }}>
+              ⟳ Applying…
             </span>
-          ) : fix.status === 'rejected' ? (
-            <span className="text-[12px]" style={{ color: '#64748B' }}>
-              Dismissed
-            </span>
-          ) : (
-            <span
-              className="text-[12px] px-2 py-1 rounded"
-              style={{ color: '#F59E0B', background: 'rgba(245,158,11,0.08)' }}
-            >
-              ⟳ Applying...
-            </span>
+          )}
+          {fix.status === 'rejected' && (
+            <span className="text-[11px]" style={{ color: '#475569' }}>Dismissed</span>
           )}
         </div>
       </div>
@@ -242,38 +155,199 @@ function FixCard({
   );
 }
 
+// ── Grouped collection card ───────────────────────────────────────────────────
+
+function CollectionGroupCard({
+  fixes,
+  topGaps,
+  onDismiss,
+  isStartHere,
+}: {
+  fixes: Fix[];
+  topGaps: QueryGap[];
+  onDismiss: (id: string) => void;
+  isStartHere?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const navigate = useNavigate();
+  const pending = fixes.filter((f) => f.status === 'pending');
+  const applied = fixes.filter((f) => f.status === 'applied' || f.status === 'manual');
+
+  // Extract collection name from title ("Add description to X collection" → "X")
+  function collectionName(title: string) {
+    return title.replace(/^Add description to /i, '').replace(/ collection$/i, '').trim();
+  }
+
+  if (pending.length === 0 && applied.length === 0) return null;
+
+  return (
+    <div
+      className="rounded-[6px] overflow-hidden"
+      style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
+    >
+      {/* Header */}
+      <div className="p-4">
+        <div className="flex gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span
+                className="text-[11px] px-2 py-0.5 rounded"
+                style={{ border: '1px solid rgba(255,255,255,0.1)', color: '#94A3B8' }}
+              >
+                Collection Descriptions
+              </span>
+              {isStartHere && pending.length > 0 && (
+                <span
+                  className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                  style={{ background: 'rgba(0,212,255,0.12)', color: '#00D4FF', border: '1px solid rgba(0,212,255,0.25)' }}
+                >
+                  ⚡ Start here
+                </span>
+              )}
+            </div>
+
+            <p className="font-medium text-white text-[14px] mb-1">
+              {pending.length > 0
+                ? `Add descriptions to ${pending.length} collection${pending.length > 1 ? 's' : ''}`
+                : `${applied.length} collection description${applied.length > 1 ? 's' : ''} applied`}
+            </p>
+            <p className="text-[12px] leading-relaxed" style={{ color: '#64748B' }}>
+              Collection descriptions are ChatGPT's #1 signal for category queries — AI reads them to understand what products you sell.
+            </p>
+
+            {/* Collection name pills */}
+            {pending.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {pending.slice(0, 5).map((f) => (
+                  <span
+                    key={f.id}
+                    className="text-[11px] px-2 py-0.5 rounded"
+                    style={{ background: 'rgba(167,139,250,0.08)', color: '#A78BFA', border: '1px solid rgba(167,139,250,0.15)' }}
+                  >
+                    {collectionName(f.title)}
+                  </span>
+                ))}
+                {pending.length > 5 && (
+                  <span className="text-[11px] px-2 py-0.5 rounded" style={{ color: '#64748B' }}>
+                    +{pending.length - 5} more
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Query gaps */}
+            {topGaps.length > 0 && pending.length > 0 && (
+              <div className="mt-2.5">
+                <p className="text-[11px] mb-1.5" style={{ color: '#475569' }}>Targets queries you're missing:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {topGaps.slice(0, 3).map((gap, i) => (
+                    <span
+                      key={i}
+                      className="text-[11px] px-2 py-0.5 rounded"
+                      style={{ background: 'rgba(239,68,68,0.07)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.15)' }}
+                    >
+                      "{gap.query}"
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right: impact + expand */}
+          <div className="flex flex-col items-end justify-start gap-2 flex-shrink-0">
+            {pending.length > 0 && (
+              <>
+                <div className="text-right">
+                  <p className="font-mono font-bold text-[18px]" style={{ color: '#00D4FF' }}>
+                    +{pending[0]?.est_impact ?? 25}%
+                  </p>
+                  <p className="text-[10px]" style={{ color: '#64748B' }}>est. per fix</p>
+                </div>
+                <button
+                  onClick={() => navigate(`/dashboard/fixes/${pending[0].id}`)}
+                  className="text-[12px] font-medium px-3 py-1.5 rounded text-center transition-all hover:brightness-110 whitespace-nowrap"
+                  style={{ background: '#00D4FF', color: '#0A0A0B', minWidth: 90 }}
+                >
+                  Apply First
+                </button>
+              </>
+            )}
+            {applied.length > 0 && pending.length === 0 && (
+              <span className="text-[12px] flex items-center gap-1.5 px-2 py-1 rounded" style={{ color: '#10B981', background: 'rgba(16,185,129,0.08)' }}>
+                <CheckCircle2 size={12} /> All applied
+              </span>
+            )}
+            <button
+              onClick={() => setExpanded((e) => !e)}
+              className="flex items-center gap-1 text-[11px]"
+              style={{ color: '#475569' }}
+            >
+              {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              {expanded ? 'Collapse' : `See all ${fixes.length}`}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded individual cards */}
+      {expanded && (
+        <div className="border-t space-y-px" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          {fixes.map((f) => (
+            <FixCard
+              key={f.id}
+              fix={f}
+              topGaps={[]}
+              onDismiss={onDismiss}
+              compact
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
 export function FixesPage() {
   const { data: fixes, isLoading } = useFixes('');
   const { data: queryGaps } = useQueryGaps();
   const { data: scores } = useVisibilityScores(30);
   const rejectFix = useRejectFix();
 
-  const allFixes = (fixes ?? []).filter((f) => f.status !== 'rejected' && (f.fix_layer ?? 'content') !== 'authority');
-
-  // Sum citations and total queries across all platforms
-  const currentCitations = scores?.reduce((s, sc) => s + (sc.queries_hit ?? 0), 0) ?? 0;
-  const totalQueriesRun = scores?.reduce((s, sc) => s + (sc.queries_run ?? 0), 0) ?? 0;
+  // Exclude rejected and authority-layer fixes
+  const allFixes = (fixes ?? []).filter(
+    (f) => f.status !== 'rejected' && (f.fix_layer ?? 'content') !== 'authority'
+  );
 
   const topGaps = (queryGaps ?? []).slice(0, 5);
 
   const pendingFixes = allFixes.filter((f) => f.status === 'pending');
-  const totalImpact = pendingFixes.reduce((sum, f) => sum + f.est_impact, 0);
-  const appliedCount = allFixes.filter((f) => f.status === 'applied' || f.status === 'manual').length;
+  const appliedFixes = allFixes.filter((f) => f.status === 'applied' || f.status === 'manual' || f.status === 'applying' || f.status === 'approved');
 
-  // First pending fix in first non-empty layer — gets the "Start here" badge
-  const startHereId = (() => {
-    for (const layer of LAYER_ORDER) {
-      const first = pendingFixes.find((f) => (f.fix_layer ?? 'content') === layer);
-      if (first) return first.id;
-    }
-    return null;
-  })();
+  // Split out collection fixes to group them
+  const collectionFixes = pendingFixes.filter((f) => f.fix_type === 'collection_description');
+  const appliedCollectionFixes = appliedFixes.filter((f) => f.fix_type === 'collection_description');
+  const allCollectionFixes = [...collectionFixes, ...appliedCollectionFixes];
 
-  const missingQueryCount = (queryGaps ?? []).length;
+  // Other pending fixes sorted by est_impact desc
+  const otherPending = pendingFixes
+    .filter((f) => f.fix_type !== 'collection_description')
+    .sort((a, b) => b.est_impact - a.est_impact);
+
+  // Other applied fixes
+  const otherApplied = appliedFixes.filter((f) => f.fix_type !== 'collection_description');
+
+  const startHereId = collectionFixes.length > 0
+    ? '__collections__'
+    : otherPending[0]?.id ?? null;
 
   function handleDismiss(id: string) {
     rejectFix.mutate(id);
   }
+
+  const missingQueryCount = (queryGaps ?? []).length;
 
   return (
     <div className="pb-20 md:pb-0">
@@ -299,42 +373,31 @@ export function FixesPage() {
         </span>
         <span className="mx-4" style={{ color: '#334155' }}>|</span>
         <span className="whitespace-nowrap">
-          <span className="font-mono font-bold" style={{ color: '#00D4FF' }}>
-            +{totalImpact}%
-          </span>{' '}
-          <span style={{ color: '#64748B' }}>estimated visibility gain</span>
-        </span>
-        <span className="mx-4" style={{ color: '#334155' }}>|</span>
-        <span className="whitespace-nowrap">
-          <span className="font-mono font-bold text-white">{appliedCount}</span>{' '}
+          <span className="font-mono font-bold text-white">{appliedFixes.length}</span>{' '}
           <span style={{ color: '#64748B' }}>applied</span>
         </span>
-        <span className="mx-4" style={{ color: '#334155' }}>|</span>
-        <span className="flex items-center gap-1.5 whitespace-nowrap">
-          <span className="w-2 h-2 rounded-full" style={{ background: '#F59E0B' }} />
-          <span className="font-mono font-bold text-white">
-            {pendingFixes.filter((f) => f.priority === 'high').length}
-          </span>{' '}
-          <span style={{ color: '#64748B' }}>high priority</span>
-        </span>
+        {pendingFixes.filter((f) => f.priority === 'high').length > 0 && (
+          <>
+            <span className="mx-4" style={{ color: '#334155' }}>|</span>
+            <span className="flex items-center gap-1.5 whitespace-nowrap">
+              <span className="w-2 h-2 rounded-full" style={{ background: '#F59E0B' }} />
+              <span className="font-mono font-bold text-white">
+                {pendingFixes.filter((f) => f.priority === 'high').length}
+              </span>{' '}
+              <span style={{ color: '#64748B' }}>high priority</span>
+            </span>
+          </>
+        )}
       </div>
 
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-[6px] p-5 flex gap-5"
-              style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
-            >
-              <div className="flex-1 space-y-2">
+            <div key={i} className="rounded-[6px] p-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div className="space-y-2">
                 <LoadingSkeleton height="12px" className="w-20" />
                 <LoadingSkeleton height="18px" className="w-64" />
                 <LoadingSkeleton height="12px" lines={2} />
-              </div>
-              <div className="flex flex-col gap-2 items-end">
-                <LoadingSkeleton height="28px" className="w-16" />
-                <LoadingSkeleton height="32px" className="w-24" />
               </div>
             </div>
           ))}
@@ -354,47 +417,39 @@ export function FixesPage() {
           }
         />
       ) : (
-        <div className="space-y-8">
-          {LAYER_ORDER.map((layer) => {
-            const meta = LAYER_META[layer];
-            const group = allFixes.filter((f) => (f.fix_layer ?? 'content') === layer);
+        <div className="space-y-3">
+          {/* Grouped collection card */}
+          {allCollectionFixes.length > 0 && (
+            <CollectionGroupCard
+              fixes={allCollectionFixes}
+              topGaps={topGaps}
+              onDismiss={handleDismiss}
+              isStartHere={startHereId === '__collections__'}
+            />
+          )}
 
-            if (group.length === 0) return null;
+          {/* Other pending fixes — sorted by impact */}
+          {otherPending.map((fix, i) => (
+            <FixCard
+              key={fix.id}
+              fix={fix}
+              topGaps={topGaps}
+              onDismiss={handleDismiss}
+              isStartHere={fix.id === startHereId}
+            />
+          ))}
 
-            return (
-              <div key={layer}>
-                {/* Layer header */}
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: meta.color }} />
-                  <span className="text-[13px] font-medium" style={{ color: meta.color }}>
-                    {meta.label}
-                  </span>
-                  <span className="text-[11px]" style={{ color: '#334155' }}>
-                    — {meta.sublabel}
-                  </span>
-                  <div className="ml-auto">
-                    <span className="text-[10px] font-mono" style={{ color: '#475569' }}>
-                      {group.length} fix{group.length > 1 ? 'es' : ''}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  {group.map((fix) => (
-                    <FixCard
-                      key={fix.id}
-                      fix={fix}
-                      onDismiss={handleDismiss}
-                      topGaps={topGaps}
-                      currentCitations={currentCitations}
-                      totalQueriesRun={totalQueriesRun}
-                      isStartHere={fix.id === startHereId}
-                    />
-                  ))}
-                </div>
+          {/* Applied section */}
+          {otherApplied.length > 0 && (
+            <div className="pt-4">
+              <p className="text-[11px] mb-2 font-medium" style={{ color: '#475569' }}>Applied</p>
+              <div className="space-y-2">
+                {otherApplied.map((fix) => (
+                  <FixCard key={fix.id} fix={fix} topGaps={[]} onDismiss={handleDismiss} compact />
+                ))}
               </div>
-            );
-          })}
+            </div>
+          )}
         </div>
       )}
     </div>
