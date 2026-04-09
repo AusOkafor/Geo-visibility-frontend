@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, ChevronDown, ChevronUp, Layers } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { useFixes, useRejectFix, useQueryGaps, useVisibilityScores } from '../../hooks/useApi';
+import { useFixes, useRejectFix, useQueryGaps } from '../../hooks/useApi';
 import type { Fix, QueryGap } from '../../types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -313,7 +313,6 @@ function CollectionGroupCard({
 export function FixesPage() {
   const { data: fixes, isLoading } = useFixes('');
   const { data: queryGaps } = useQueryGaps();
-  const { data: scores } = useVisibilityScores(30);
   const rejectFix = useRejectFix();
 
   // Exclude rejected and authority-layer fixes
@@ -429,7 +428,7 @@ export function FixesPage() {
           )}
 
           {/* Other pending fixes — sorted by impact */}
-          {otherPending.map((fix, i) => (
+          {otherPending.map((fix) => (
             <FixCard
               key={fix.id}
               fix={fix}
