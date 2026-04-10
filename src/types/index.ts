@@ -37,6 +37,7 @@ export interface Competitor {
   name: string;
   platforms: string[];
   best_position: number;
+  avg_position: number;
   platform_positions: Record<string, number>;
   total_frequency: number;
   total_scans: number;

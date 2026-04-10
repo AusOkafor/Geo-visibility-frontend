@@ -53,12 +53,12 @@ function splitStatus(kind: 'category' | 'branded', score: number): { label: stri
   if (kind === 'category') {
     if (score === 0) return { label: 'Invisible', color: '#EF4444' };
     if (score < 20) return { label: 'Needs work', color: '#F59E0B' };
-    if (score < 50) return { label: 'Building', color: '#64748B' };
-    return { label: 'Discoverable', color: '#00D4FF' };
+    if (score < 50) return { label: 'Improving', color: '#64748B' };
+    return { label: 'Good', color: '#00D4FF' };
   }
   // branded
-  if (score >= 75) return { label: 'Good', color: '#00D4FF' };
-  if (score >= 40) return { label: 'Ok', color: '#64748B' };
+  if (score >= 80) return { label: 'Good', color: '#00D4FF' };
+  if (score >= 50) return { label: 'OK', color: '#64748B' };
   if (score > 0) return { label: 'Weak', color: '#F59E0B' };
   return { label: 'Not found', color: '#EF4444' };
 }
@@ -157,6 +157,17 @@ export function DashboardHome() {
   const pxDelta = getPlatformDelta(dailyArr, 'perplexity');
   const gmDelta = getPlatformDelta(dailyArr, 'gemini');
   const gapList = queryGaps ?? [];
+  const dedupedGaps = (() => {
+    const seen = new Set<string>();
+    const out: typeof gapList = [];
+    for (const g of gapList) {
+      const key = (g.query ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push({ ...g, query: (g.query ?? '').trim().replace(/\s+/g, ' ') });
+    }
+    return out;
+  })();
 
   // Poll River job status while scan is active; refresh all data when done.
   // Max 84 polls × 5 s = 7 minutes failsafe.
@@ -264,8 +275,8 @@ export function DashboardHome() {
   if (groundedCount < 2) {
     whyReasons.push({ icon: '🔍', text: `Only ${groundedCount} of 3 platforms use live web search — the others rely on training memory where you don't exist yet`, severity: 'mid' });
   }
-  if (gapList.length >= 10) {
-    whyReasons.push({ icon: '🕳️', text: `You're missing from ${gapList.length} queries competitors answer — no indexed content for AI to surface`, severity: 'high' });
+  if (dedupedGaps.length >= 10) {
+    whyReasons.push({ icon: '🕳️', text: `You're missing from ${dedupedGaps.length} queries competitors answer — no indexed content for AI to surface`, severity: 'high' });
   }
   if (whyReasons.length < 3) {
     whyReasons.push({ icon: '🏛️', text: 'Established brands carry years of press mentions, reviews, and backlinks that AI models weight heavily', severity: 'low' });
@@ -434,77 +445,90 @@ export function DashboardHome() {
           ))
         ) : (
           <>
-            <MetricCard
-              label="ChatGPT Visibility (product searches)"
-              value={chatgpt?.breakdown?.category?.score ?? 0}
-              suffix="%"
-              trend={cgDelta}
-              status={chatgpt ? splitStatus('category', chatgpt.breakdown?.category?.score ?? 0) : undefined}
-              subLabel={
-                chatgpt
-                  ? `${chatgpt.breakdown?.category?.mentioned ?? 0} of ${chatgpt.breakdown?.category?.total ?? 0} queries`
-                  : undefined
-              }
-            />
-            <MetricCard
-              label="ChatGPT Visibility (brand searches)"
-              value={chatgpt?.breakdown?.branded?.score ?? 0}
-              suffix="%"
-              status={chatgpt ? splitStatus('branded', chatgpt.breakdown?.branded?.score ?? 0) : undefined}
-              subLabel={
-                chatgpt
-                  ? `${chatgpt.breakdown?.branded?.mentioned ?? 0} of ${chatgpt.breakdown?.branded?.total ?? 0} queries`
-                  : undefined
-              }
-            />
+            {([
+              { key: 'chatgpt', label: 'ChatGPT', s: chatgpt, trend: cgDelta },
+              { key: 'perplexity', label: 'Perplexity', s: perplexity, trend: pxDelta },
+              { key: 'gemini', label: 'Gemini', s: gemini, trend: gmDelta },
+            ] as const).map(({ key, label, s, trend }) => {
+              const categoryScore = s?.breakdown?.category?.score ?? 0;
+              const categoryMentioned = s?.breakdown?.category?.mentioned ?? 0;
+              const categoryTotal = s?.breakdown?.category?.total ?? 0;
+              const brandedScore = s?.breakdown?.branded?.score ?? 0;
+              const brandedMentioned = s?.breakdown?.branded?.mentioned ?? 0;
+              const brandedTotal = s?.breakdown?.branded?.total ?? 0;
 
-            <MetricCard
-              label="Perplexity Visibility (product searches)"
-              value={perplexity?.breakdown?.category?.score ?? 0}
-              suffix="%"
-              trend={pxDelta}
-              status={perplexity ? splitStatus('category', perplexity.breakdown?.category?.score ?? 0) : undefined}
-              subLabel={
-                perplexity
-                  ? `${perplexity.breakdown?.category?.mentioned ?? 0} of ${perplexity.breakdown?.category?.total ?? 0} queries`
-                  : undefined
-              }
-            />
-            <MetricCard
-              label="Perplexity Visibility (brand searches)"
-              value={perplexity?.breakdown?.branded?.score ?? 0}
-              suffix="%"
-              status={perplexity ? splitStatus('branded', perplexity.breakdown?.branded?.score ?? 0) : undefined}
-              subLabel={
-                perplexity
-                  ? `${perplexity.breakdown?.branded?.mentioned ?? 0} of ${perplexity.breakdown?.branded?.total ?? 0} queries`
-                  : undefined
-              }
-            />
+              const catStatus = splitStatus('category', categoryScore);
+              const brandStatus = splitStatus('branded', brandedScore);
 
-            <MetricCard
-              label="Gemini Visibility (product searches)"
-              value={gemini?.breakdown?.category?.score ?? 0}
-              suffix="%"
-              trend={gmDelta}
-              status={gemini ? splitStatus('category', gemini.breakdown?.category?.score ?? 0) : undefined}
-              subLabel={
-                gemini
-                  ? `${gemini.breakdown?.category?.mentioned ?? 0} of ${gemini.breakdown?.category?.total ?? 0} queries`
-                  : undefined
-              }
-            />
-            <MetricCard
-              label="Gemini Visibility (brand searches)"
-              value={gemini?.breakdown?.branded?.score ?? 0}
-              suffix="%"
-              status={gemini ? splitStatus('branded', gemini.breakdown?.branded?.score ?? 0) : undefined}
-              subLabel={
-                gemini
-                  ? `${gemini.breakdown?.branded?.mentioned ?? 0} of ${gemini.breakdown?.branded?.total ?? 0} queries`
-                  : undefined
-              }
-            />
+              const showSplit = (categoryTotal + brandedTotal) > 0;
+              const productLabel = 'Product searches';
+              const brandLabel = 'Brand searches';
+
+              return (
+                <div
+                  key={key}
+                  className="rounded-[6px] p-5 transition-all duration-200 hover:shadow-[0_0_0_1px_rgba(0,212,255,0.15),inset_0_0_20px_rgba(0,212,255,0.03)]"
+                  style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[11px] uppercase tracking-widest" style={{ color: '#64748B' }}>
+                      {label}
+                    </p>
+                    {trend !== undefined && (
+                      <p className="text-[11px] font-mono" style={{ color: trend > 0 ? '#00D4FF' : trend < 0 ? '#EF4444' : '#64748B' }}>
+                        {trend > 0 ? '↑' : trend < 0 ? '↓' : '—'}{trend !== 0 ? ` ${Math.abs(trend)}pts` : ' flat'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Product searches headline */}
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="text-[28px] font-bold font-mono text-white leading-none">
+                      {showSplit ? `${categoryScore}%` : `${s?.score ?? 0}%`}
+                    </p>
+                    <span className="text-[11px] font-medium" style={{ color: catStatus.color }}>
+                      {showSplit ? catStatus.label : splitStatus('category', s?.score ?? 0).label}
+                    </span>
+                  </div>
+                  <p className="text-[11px] mt-1 leading-tight" style={{ color: '#94a3b8' }}>
+                    {showSplit
+                      ? `${productLabel}: ${categoryMentioned} of ${categoryTotal}`
+                      : `Cited in ${s?.queries_hit ?? 0} of ${s?.queries_run ?? 0} queries`}
+                  </p>
+
+                  {/* Split breakdown rows */}
+                  {showSplit && (
+                    <div className="mt-3 space-y-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[11px] uppercase tracking-wider" style={{ color: '#64748B' }}>{productLabel}</p>
+                          <p className="text-[11px]" style={{ color: '#475569' }}>{categoryMentioned} / {categoryTotal} queries</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="font-mono font-bold text-[12px]" style={{ color: catStatus.color }}>{categoryScore}%</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded uppercase tracking-wider" style={{ background: `${catStatus.color}18`, color: catStatus.color }}>
+                            {catStatus.label}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[11px] uppercase tracking-wider" style={{ color: '#64748B' }}>{brandLabel}</p>
+                          <p className="text-[11px]" style={{ color: '#475569' }}>{brandedMentioned} / {brandedTotal} queries</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="font-mono font-bold text-[12px]" style={{ color: brandStatus.color }}>{brandedScore}%</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded uppercase tracking-wider" style={{ background: `${brandStatus.color}18`, color: brandStatus.color }}>
+                            {brandStatus.label}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <MetricCard
               label="Pending Fixes"
               value={pendingFixes.length}
@@ -905,22 +929,22 @@ export function DashboardHome() {
       </div>
 
       {/* ── SECTION 6: Blind spots ────────────────────────────────────────────── */}
-      {(gapsLoading || gapList.length > 0) && (
+      {(gapsLoading || dedupedGaps.length > 0) && (
         <div className="rounded-[8px] p-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
           <div className="flex items-start gap-3 mb-3">
             <div className="flex-1">
               <p className="font-medium text-white text-[15px]">Queries where you're completely invisible</p>
               <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>Real buyer prompts tested across ChatGPT, Perplexity, and Gemini — your brand wasn't cited in any of these</p>
             </div>
-            {gapList.length > 0 && (
+            {dedupedGaps.length > 0 && (
               <span className="flex-shrink-0 text-[11px] font-mono px-2 py-0.5 rounded" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}>
-                {gapList.length} gap{gapList.length !== 1 ? 's' : ''}
+                {dedupedGaps.length} gap{dedupedGaps.length !== 1 ? 's' : ''}
               </span>
             )}
           </div>
-          {gapList.length > 0 && (
+          {dedupedGaps.length > 0 && (
             <p className="text-[12px] mb-4 px-3 py-2 rounded-[4px]" style={{ background: 'rgba(239,68,68,0.06)', color: '#fca5a5' }}>
-              Fixing top {Math.min(5, gapList.length)} gaps could increase visibility by ~{Math.min(5, gapList.length) * 4}%
+              Fixing top {Math.min(5, dedupedGaps.length)} gaps could increase visibility by ~{Math.min(5, dedupedGaps.length) * 4}%
             </p>
           )}
           {gapsLoading ? (
@@ -930,7 +954,7 @@ export function DashboardHome() {
               <div>
                 <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: '#EF4444' }}>High-value — fix these first</p>
                 <div className="space-y-1.5">
-                  {gapList.slice(0, 5).map((gap, i) => (
+                  {dedupedGaps.slice(0, 5).map((gap, i) => (
                     <div key={i} className="flex items-center gap-3 py-2 px-3 rounded-[6px]" style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)' }}>
                       <span className="text-[11px] flex-shrink-0" style={{ color: '#EF4444' }}>✕</span>
                       <span className="flex-1 text-[13px]" style={{ color: '#cbd5e1' }}>{gap.query}</span>
@@ -947,11 +971,11 @@ export function DashboardHome() {
                   ))}
                 </div>
               </div>
-              {gapList.length > 5 && (
+              {dedupedGaps.length > 5 && (
                 <div>
-                  <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: '#334155' }}>Secondary opportunities ({gapList.length - 5})</p>
+                  <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: '#334155' }}>Secondary opportunities ({dedupedGaps.length - 5})</p>
                   <div className="space-y-1">
-                    {gapList.slice(5).map((gap, i) => (
+                    {dedupedGaps.slice(5).map((gap, i) => (
                       <div key={i} className="flex items-center gap-3 py-1.5 px-3 rounded-[6px]" style={{ background: 'rgba(255,255,255,0.02)' }}>
                         <span className="text-[11px] flex-shrink-0" style={{ color: '#334155' }}>–</span>
                         <span className="flex-1 text-[12px]" style={{ color: '#64748B' }}>{gap.query}</span>

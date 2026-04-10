@@ -20,6 +20,14 @@ function positionLabel(pos: number): string {
   return '—';
 }
 
+function avgPositionLabel(avg: number | undefined): string {
+  if (!avg || avg <= 0) return '—';
+  if (avg < 1.05) return '1st avg';
+  if (avg < 2.05) return '2nd avg';
+  if (avg < 3.05) return '3rd avg';
+  return `${avg.toFixed(1)} avg`;
+}
+
 // Threat level: how aggressively this competitor outranks you
 function threatColor(score: number): string {
   if (score >= 0.7) return '#EF4444'; // high threat
@@ -197,6 +205,9 @@ export function CompetitorsPage() {
                   {/* Position */}
                   <span className="font-mono text-[13px] text-white">
                     {positionLabel(comp.best_position)}
+                    <span className="ml-2 text-[11px]" style={{ color: '#64748B' }}>
+                      {avgPositionLabel(comp.avg_position)}
+                    </span>
                   </span>
 
                   {/* Citations with context */}
