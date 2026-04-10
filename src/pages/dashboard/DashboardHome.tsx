@@ -49,11 +49,18 @@ function getPlatformDelta(daily: DailyScore[], key: 'chatgpt' | 'perplexity' | '
   return last - prev;
 }
 
-function scoreStatus(score: number): { label: string; color: string } {
-  if (score < 20) return { label: 'Below average', color: '#EF4444' };
-  if (score < 50) return { label: 'Needs work', color: '#F59E0B' };
-  if (score < 75) return { label: 'Competitive', color: '#64748B' };
-  return { label: 'Strong', color: '#00D4FF' };
+function splitStatus(kind: 'category' | 'branded', score: number): { label: string; color: string } {
+  if (kind === 'category') {
+    if (score === 0) return { label: 'Invisible', color: '#EF4444' };
+    if (score < 20) return { label: 'Needs work', color: '#F59E0B' };
+    if (score < 50) return { label: 'Building', color: '#64748B' };
+    return { label: 'Discoverable', color: '#00D4FF' };
+  }
+  // branded
+  if (score >= 75) return { label: 'Good', color: '#00D4FF' };
+  if (score >= 40) return { label: 'Ok', color: '#64748B' };
+  if (score > 0) return { label: 'Weak', color: '#F59E0B' };
+  return { label: 'Not found', color: '#EF4444' };
 }
 
 // ─── scan progress stages ────────────────────────────────────────────────────
@@ -150,43 +157,6 @@ export function DashboardHome() {
   const pxDelta = getPlatformDelta(dailyArr, 'perplexity');
   const gmDelta = getPlatformDelta(dailyArr, 'gemini');
   const gapList = queryGaps ?? [];
-
-  // Per-platform sub-labels: raw query counts take priority (humans trust counts more than %)
-  const platformSubLabel = (
-    score: number | undefined,
-    platformName: string,
-    queriesHit?: number,
-    queriesRun?: number,
-    negativeMentions?: number,
-  ): string | undefined => {
-    if (score === undefined) return undefined;
-    // Negative mentions take priority — merchant needs to know immediately
-    if (negativeMentions && negativeMentions > 0) {
-      return `${negativeMentions} negative mention${negativeMentions > 1 ? 's' : ''} excluded from score`;
-    }
-    if (score === 0) return `Not being recommended on ${platformName}`;
-    // Raw count — most useful context when data exists
-    if (queriesHit !== undefined && queriesRun) {
-      return `${queriesHit} of ${queriesRun} queries`;
-    }
-    const topComp = compList[0];
-    if (score < 20 && topComp && topComp.total_scans > 0) {
-      const compPct = Math.round((topComp.total_frequency / topComp.total_scans) * 100);
-      if (compPct > score * 1.5) {
-        const mult = (compPct / Math.max(score, 1)).toFixed(1);
-        return `Competitors cited ${mult}× more often`;
-      }
-    }
-    if (score < 40) return 'Weak presence — apply fixes to improve';
-    if (score >= 75) return 'Strong AI presence';
-    return undefined;
-  };
-
-  const sourceTag = (platform: string): 'web' | 'simulated' | undefined => {
-    if (!platformSources || platformSources.length === 0) return undefined;
-    const src = platformSources.find((s) => s.platform === platform);
-    return src ? (src.grounded ? 'web' : 'simulated') : undefined;
-  };
 
   // Poll River job status while scan is active; refresh all data when done.
   // Max 84 polls × 5 s = 7 minutes failsafe.
@@ -464,9 +434,77 @@ export function DashboardHome() {
           ))
         ) : (
           <>
-            <MetricCard label="ChatGPT Visibility" value={chatgpt?.score ?? 0} suffix="%" trend={cgDelta} status={chatgpt ? scoreStatus(chatgpt.score) : undefined} subLabel={platformSubLabel(chatgpt?.score, 'ChatGPT', chatgpt?.queries_hit, chatgpt?.queries_run, chatgpt?.negative_mentions)} sourceTag={sourceTag('chatgpt')} />
-            <MetricCard label="Perplexity Visibility" value={perplexity?.score ?? 0} suffix="%" trend={pxDelta} status={perplexity ? scoreStatus(perplexity.score) : undefined} subLabel={platformSubLabel(perplexity?.score, 'Perplexity', perplexity?.queries_hit, perplexity?.queries_run, perplexity?.negative_mentions)} sourceTag={sourceTag('perplexity')} />
-            <MetricCard label="Gemini Visibility" value={gemini?.score ?? 0} suffix="%" trend={gmDelta} status={gemini ? scoreStatus(gemini.score) : undefined} subLabel={platformSubLabel(gemini?.score, 'Gemini', gemini?.queries_hit, gemini?.queries_run, gemini?.negative_mentions)} sourceTag={sourceTag('gemini')} />
+            <MetricCard
+              label="ChatGPT Visibility (product searches)"
+              value={chatgpt?.breakdown?.category?.score ?? 0}
+              suffix="%"
+              trend={cgDelta}
+              status={chatgpt ? splitStatus('category', chatgpt.breakdown?.category?.score ?? 0) : undefined}
+              subLabel={
+                chatgpt
+                  ? `${chatgpt.breakdown?.category?.mentioned ?? 0} of ${chatgpt.breakdown?.category?.total ?? 0} queries`
+                  : undefined
+              }
+            />
+            <MetricCard
+              label="ChatGPT Visibility (brand searches)"
+              value={chatgpt?.breakdown?.branded?.score ?? 0}
+              suffix="%"
+              status={chatgpt ? splitStatus('branded', chatgpt.breakdown?.branded?.score ?? 0) : undefined}
+              subLabel={
+                chatgpt
+                  ? `${chatgpt.breakdown?.branded?.mentioned ?? 0} of ${chatgpt.breakdown?.branded?.total ?? 0} queries`
+                  : undefined
+              }
+            />
+
+            <MetricCard
+              label="Perplexity Visibility (product searches)"
+              value={perplexity?.breakdown?.category?.score ?? 0}
+              suffix="%"
+              trend={pxDelta}
+              status={perplexity ? splitStatus('category', perplexity.breakdown?.category?.score ?? 0) : undefined}
+              subLabel={
+                perplexity
+                  ? `${perplexity.breakdown?.category?.mentioned ?? 0} of ${perplexity.breakdown?.category?.total ?? 0} queries`
+                  : undefined
+              }
+            />
+            <MetricCard
+              label="Perplexity Visibility (brand searches)"
+              value={perplexity?.breakdown?.branded?.score ?? 0}
+              suffix="%"
+              status={perplexity ? splitStatus('branded', perplexity.breakdown?.branded?.score ?? 0) : undefined}
+              subLabel={
+                perplexity
+                  ? `${perplexity.breakdown?.branded?.mentioned ?? 0} of ${perplexity.breakdown?.branded?.total ?? 0} queries`
+                  : undefined
+              }
+            />
+
+            <MetricCard
+              label="Gemini Visibility (product searches)"
+              value={gemini?.breakdown?.category?.score ?? 0}
+              suffix="%"
+              trend={gmDelta}
+              status={gemini ? splitStatus('category', gemini.breakdown?.category?.score ?? 0) : undefined}
+              subLabel={
+                gemini
+                  ? `${gemini.breakdown?.category?.mentioned ?? 0} of ${gemini.breakdown?.category?.total ?? 0} queries`
+                  : undefined
+              }
+            />
+            <MetricCard
+              label="Gemini Visibility (brand searches)"
+              value={gemini?.breakdown?.branded?.score ?? 0}
+              suffix="%"
+              status={gemini ? splitStatus('branded', gemini.breakdown?.branded?.score ?? 0) : undefined}
+              subLabel={
+                gemini
+                  ? `${gemini.breakdown?.branded?.mentioned ?? 0} of ${gemini.breakdown?.branded?.total ?? 0} queries`
+                  : undefined
+              }
+            />
             <MetricCard
               label="Pending Fixes"
               value={pendingFixes.length}

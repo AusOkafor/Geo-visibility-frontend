@@ -15,6 +15,15 @@ export interface VisibilityScore {
   queries_run: number;
   queries_hit: number;
   negative_mentions: number;
+
+  // Additive fields for split presentation (backward compatible).
+  overall_score: number;
+  total_queries: number;
+  mentioned: number;
+  breakdown: {
+    branded: { score: number; total: number; mentioned: number };
+    category: { score: number; total: number; mentioned: number };
+  };
 }
 
 export interface DailyScore {
