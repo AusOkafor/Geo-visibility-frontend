@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
+import { MetricCard } from '../../components/ui/MetricCard';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -434,9 +435,9 @@ export function DashboardHome() {
           % = how often your brand appears in AI answers across tested buyer queries
         </p>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
         {scoresLoading ? (
-          Array.from({ length: 3 }).map((_, i) => (
+          Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="rounded-[6px] p-5" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}>
               <LoadingSkeleton height="12px" className="mb-3 w-20" />
               <LoadingSkeleton height="32px" className="w-16" />
@@ -528,6 +529,28 @@ export function DashboardHome() {
                 </div>
               );
             })}
+            <MetricCard
+              label="Pending Fixes"
+              value={pendingFixes.length}
+              status={
+                pendingFixes.length === 0 && appliedFixCount > 0
+                  ? { label: `${appliedFixCount} applied`, color: '#00D4FF' }
+                  : pendingFixes.length === 0
+                  ? { label: 'All caught up', color: '#00D4FF' }
+                  : pendingFixes.filter(f => f.priority === 'high').length > 0
+                  ? { label: `${pendingFixes.filter(f => f.priority === 'high').length} high priority`, color: '#EF4444' }
+                  : { label: 'Ready to apply', color: '#F59E0B' }
+              }
+              subLabel={
+                appliedFixCount > 0 && pendingFixes.length > 0
+                  ? `${appliedFixCount} applied — apply now`
+                  : pendingFixes.filter(f => f.priority === 'high').length > 0
+                  ? 'Blocking visibility — apply now'
+                  : pendingFixes.length > 0
+                  ? 'Apply to improve citations'
+                  : undefined
+              }
+            />
           </>
         )}
       </div>
@@ -777,23 +800,7 @@ export function DashboardHome() {
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <span className="font-mono text-[12px] font-bold" style={{ color: '#00D4FF' }}>+{fix.est_impact}%</span>
-                      <span
-                        className="text-[10px] px-1.5 py-0.5 rounded capitalize"
-                        style={{
-                          background: fix.fix_layer === 'structure'
-                            ? 'rgba(167,139,250,0.1)'
-                            : fix.fix_layer === 'authority'
-                            ? 'rgba(245,158,11,0.1)'
-                            : 'rgba(0,212,255,0.08)',
-                          color: fix.fix_layer === 'structure'
-                            ? '#A78BFA'
-                            : fix.fix_layer === 'authority'
-                            ? '#F59E0B'
-                            : '#00D4FF',
-                        }}
-                      >
-                        {fix.fix_layer === 'structure' ? 'Structure' : fix.fix_layer === 'authority' ? 'Authority' : 'Content'}
-                      </span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: fix.fix_layer === 'structure' ? 'rgba(167,139,250,0.1)' : fix.fix_layer === 'authority' ? 'rgba(245,158,11,0.1)' : 'rgba(0,212,255,0.08)', color: fix.fix_layer === 'structure' ? '#A78BFA' : fix.fix_layer === 'authority' ? '#F59E0B' : '#00D4FF' }}>{fix.fix_layer ?? fix.fix_type}</span>
                     </div>
                   </Link>
                 ))}
@@ -828,7 +835,6 @@ export function DashboardHome() {
             const tier2 = compList.filter(c => (c.tier ?? 2) === 2);
             const renderComp = (comp: typeof compList[0], i: number, dimmed = false) => {
               const citePct = comp.total_scans > 0 ? Math.round((comp.total_frequency / comp.total_scans) * 100) : 0;
-              const avgRank = comp.avg_position && comp.avg_position > 0 ? comp.avg_position.toFixed(1) : null;
               return (
                 <div key={i} className="py-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                   <div className="flex items-center gap-2">
@@ -841,10 +847,7 @@ export function DashboardHome() {
                     <span className="text-[11px] font-mono font-bold flex-shrink-0" style={{ color: dimmed ? '#334155' : '#EF4444' }}>{citePct}%</span>
                   </div>
                   <p className="text-[11px] ml-6 mt-0.5 line-clamp-1" style={{ color: '#475569' }}>
-                    {comp.total_scans > 0
-                      ? `Appears in ${citePct}% of AI responses (${comp.total_frequency} citations)`
-                      : (comp.why_points?.[0] ?? '')}
-                    {avgRank ? ` • Avg rank ${avgRank}` : ''}
+                    {comp.why_points?.[0]}
                   </p>
                   {comp.top_queries?.[0] && !dimmed && (
                     <p className="text-[10px] ml-6 mt-0.5 line-clamp-1 italic" style={{ color: '#334155' }}>
