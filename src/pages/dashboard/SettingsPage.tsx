@@ -450,6 +450,8 @@ export function SettingsPage() {
   const [category, setCategory] = useState(
     () => localStorage.getItem('settings_category') ?? ''
   );
+  const [pricePositioning, setPricePositioning] = useState('');
+  const [uniqueSellingPoint, setUniqueSellingPoint] = useState('');
   const [profileDirty, setProfileDirty] = useState(false);
 
   // Social links: one slot per platform, keyed by platform index
@@ -479,6 +481,8 @@ export function SettingsPage() {
       const resolvedCategory = storedCategory ?? merchant.category ?? '';
       setBrandName(resolvedName);
       setCategory(resolvedCategory);
+      setPricePositioning((merchant as any).price_positioning ?? '');
+      setUniqueSellingPoint((merchant as any).unique_selling_point ?? '');
       // Always keep localStorage in sync with what we're showing
       localStorage.setItem('settings_brand_name', resolvedName);
       localStorage.setItem('settings_category', resolvedCategory);
@@ -573,43 +577,90 @@ export function SettingsPage() {
         </div>
       </Card>
 
-      {/* Store profile */}
-      <Card title="Store profile">
-        <p className="text-[13px] mb-4" style={{ color: '#64748B' }}>
-          Used to generate accurate scan queries and AI fix recommendations.
-        </p>
-        <div className="space-y-3">
+      {/* Brand Information */}
+      <Card title="Brand Information">
+        <div className="space-y-4">
+          {/* Brand Name */}
           <div>
-            <label className="text-[12px] block mb-1" style={{ color: '#94a3b8' }}>Brand name</label>
+            <label className="text-[12px] block mb-1" style={{ color: '#94a3b8' }}>Brand Name</label>
             <input
               type="text"
               value={brandName}
-              placeholder="e.g. Oakwood Leather Co."
+              placeholder="Your Brand"
               onChange={(e) => { setBrandName(e.target.value); setProfileDirty(true); }}
               className="w-full text-[13px] px-3 py-2 rounded"
               style={{ background: '#0d0d10', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff' }}
             />
           </div>
+
+          {/* Category + Price Positioning — side by side */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[12px] block mb-1" style={{ color: '#94a3b8' }}>Category</label>
+              <select
+                value={category}
+                onChange={(e) => { setCategory(e.target.value); setProfileDirty(true); }}
+                className="w-full text-[13px] px-3 py-2 rounded appearance-none"
+                style={{ background: '#0d0d10', border: '1px solid rgba(255,255,255,0.1)', color: category ? '#ffffff' : '#64748b' }}
+              >
+                <option value="">Select category</option>
+                <option value="Apparel">Apparel</option>
+                <option value="Beauty & Skincare">Beauty &amp; Skincare</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Home & Living">Home &amp; Living</option>
+                <option value="Food & Beverage">Food &amp; Beverage</option>
+                <option value="Health & Wellness">Health &amp; Wellness</option>
+                <option value="Jewelry & Accessories">Jewelry &amp; Accessories</option>
+                <option value="Sports & Outdoors">Sports &amp; Outdoors</option>
+                <option value="Pet Supplies">Pet Supplies</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[12px] block mb-1" style={{ color: '#94a3b8' }}>Price Positioning</label>
+              <select
+                value={pricePositioning}
+                onChange={(e) => { setPricePositioning(e.target.value); setProfileDirty(true); }}
+                className="w-full text-[13px] px-3 py-2 rounded appearance-none"
+                style={{ background: '#0d0d10', border: '1px solid rgba(255,255,255,0.1)', color: pricePositioning ? '#ffffff' : '#64748b' }}
+              >
+                <option value="">Select range</option>
+                <option value="budget">Budget</option>
+                <option value="mid-range">Mid-range</option>
+                <option value="premium">Premium</option>
+                <option value="luxury">Luxury</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Unique Selling Point */}
           <div>
-            <label className="text-[12px] block mb-1" style={{ color: '#94a3b8' }}>Primary product category</label>
-            <input
-              type="text"
-              value={category}
-              placeholder="e.g. furniture, fine jewelry, skincare"
-              onChange={(e) => { setCategory(e.target.value); setProfileDirty(true); }}
-              className="w-full text-[13px] px-3 py-2 rounded"
+            <label className="text-[12px] block mb-1" style={{ color: '#94a3b8' }}>Unique Selling Point</label>
+            <textarea
+              value={uniqueSellingPoint}
+              maxLength={200}
+              placeholder="What makes your brand unique? (max 200 chars)"
+              onChange={(e) => { setUniqueSellingPoint(e.target.value); setProfileDirty(true); }}
+              rows={3}
+              className="w-full text-[13px] px-3 py-2 rounded resize-none"
               style={{ background: '#0d0d10', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff' }}
             />
-            <p className="text-[11px] mt-1.5" style={{ color: '#475569' }}>
-              Enter your main product type as a short phrase — e.g. <span style={{ color: '#64748b' }}>furniture</span>, <span style={{ color: '#64748b' }}>women's clothing</span>, <span style={{ color: '#64748b' }}>home fragrance</span>. For stores with multiple product types, use the broadest term that covers your range. This drives how AI scan queries are generated.
+            <p className="text-[11px] mt-1" style={{ color: '#475569' }}>
+              {uniqueSellingPoint.length}/200
             </p>
           </div>
         </div>
+
         <div className="mt-4 flex items-center gap-3">
           <button
             onClick={() => {
               updateMerchant.mutate(
-                { brand_name: brandName, category },
+                {
+                  brand_name: brandName,
+                  category,
+                  price_positioning: pricePositioning,
+                  unique_selling_point: uniqueSellingPoint,
+                },
                 {
                   onSuccess: () => {
                     localStorage.setItem('settings_brand_name', brandName);
